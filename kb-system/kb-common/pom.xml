@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        kb-common — 公共模块
+        职责：
+          1. 统一响应体 Result<T>、分页 PageDTO
+          2. 全局枚举类（UserRole、DocStatus、TaskType、TaskStatus、MessageRole）
+          3. 全局异常处理（BusinessException、GlobalExceptionHandler）
+        本模块不包含任何业务逻辑，仅提供公共基础设施。
+        被 kb-gateway 和 kb-app 共同依赖。
+    -->
+
+    <parent>
+        <groupId>com.kb</groupId>
+        <artifactId>kb-system</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>kb-common</artifactId>
+    <packaging>jar</packaging>
+    <name>kb-common</name>
+    <description>公共模块：统一响应体、枚举、异常处理</description>
+
+    <dependencies>
+
+        <!-- Spring Boot Web 基础：提供 @RestControllerAdvice 等注解，
+             用于 GlobalExceptionHandler 全局异常捕获 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Jakarta Validation：@Valid + @NotBlank 等校验注解，
+             所有用户输入统一校验 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Jackson：JSON 序列化/反序列化，Result<T> 响应体需要 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+    </dependencies>
+
+</project>

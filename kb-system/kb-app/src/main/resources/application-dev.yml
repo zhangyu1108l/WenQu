@@ -1,0 +1,152 @@
+# ============================================================
+# 问渠（WenQu）— kb-app 开发环境配置
+# 所有敏感信息（密码、API Key、Secret）必须从环境变量读取，不要硬编码！
+# 本地开发时在 IDE 的 Run Configuration 或 .env 文件中设置环境变量
+# ============================================================
+
+spring:
+
+  # ==========================================================
+  # MySQL 数据库配置
+  # 关系型存储：11 张业务表（tenant/user/document/... 等）
+  # 所有环境变量说明：
+  #   MYSQL_HOST     — MySQL 主机地址，Docker 内为服务名 mysql，本地为 localhost
+  #   MYSQL_PORT     — MySQL 端口，默认 3306
+  #   MYSQL_DB       — 数据库名
+  #   MYSQL_PASSWORD — 数据库密码，从环境变量读取，不要硬编码
+  # ==========================================================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:kb_system}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:1234}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+
+  # ==========================================================
+  # Redis 配置
+  # 用途：
+  #   1. 对话历史滑动窗口（Key: conv:{conversationId}:history，TTL 24h）
+  #   2. JWT 登出黑名单（Key: jwt:blacklist:{token}，TTL=token剩余有效期）
+  # 环境变量：
+  #   REDIS_HOST     — Redis 主机地址，Docker 内为服务名 redis
+  #   REDIS_PORT     — Redis 端口，默认 6379
+  #   REDIS_PASSWORD — Redis 密码，从环境变量读取，不要硬编码
+  # ==========================================================
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          min-idle: 5
+          max-idle: 10
+          max-active: 20
+
+  # ==========================================================
+  # Spring AI — DeepSeek Chat（LLM 对话生成）
+  # 通过 OpenAI 兼容协议对接 DeepSeek
+  # 用途：RAG 链路中的问题改写（Step ②）和流式回答生成（Step ⑦）
+  # 环境变量：
+  #   DEEPSEEK_API_KEY — DeepSeek API 密钥，从环境变量读取，不要硬编码
+  # ==========================================================
+  ai:
+    openai:
+      base-url: https://api.deepseek.com
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.3
+
+# ==========================================================
+# 智谱 Embedding 配置（自定义属性，由 SpringAiConfig.java 读取）
+# 用途：RAG 链路中将查询/文档文本向量化（维度 2048）
+# Spring AI OpenAI starter 默认只支持一个 provider，
+# 智谱 embedding 使用自定义属性，在 SpringAiConfig 中手动创建 EmbeddingModel Bean
+# 环境变量：
+#   ZHIPU_API_KEY — 智谱 API 密钥，从环境变量读取，不要硬编码
+# ==========================================================
+zhipu:
+  embedding:
+    base-url: https://open.bigmodel.cn/api/paas/v4
+    api-key: ${ZHIPU_API_KEY:}
+    model: embedding-3
+    dimensions: 2048
+
+# ==========================================================
+# MinIO 对象存储配置（自定义属性，由 MinioConfig.java 读取）
+# 用途：存储上传的 PDF/DOCX 文件，每租户独立 Bucket（tenant-{tenantId}）
+# 下载时返回预签名 URL（有效期 15 分钟），不返回永久链接
+# 环境变量：
+#   MINIO_ENDPOINT   — MinIO 服务地址，Docker 内为 http://minio:9000
+#   MINIO_ACCESS_KEY — MinIO 访问密钥，从环境变量读取，不要硬编码
+#   MINIO_SECRET_KEY — MinIO 密钥，从环境变量读取，不要硬编码
+# ==========================================================
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
+
+# ==========================================================
+# Milvus 向量数据库配置（自定义属性，由 MilvusConfig.java 读取）
+# 用途：存储文档 Embedding 向量，RAG 检索 Top-10
+# 每租户独立 Collection（tenant_{tenantId}_docs），向量维度 2048
+# ==========================================================
+milvus:
+  host: ${MILVUS_HOST:localhost}
+  port: ${MILVUS_PORT:19530}
+
+# ==========================================================
+# JWT 鉴权配置（自定义属性，由 JwtUtil 读取）
+# accessToken 有效期 1 小时，refreshToken 有效期 7 天
+# 登出时 accessToken 加入 Redis 黑名单
+# 环境变量：
+#   JWT_SECRET — JWT 签名密钥（至少 256 位），从环境变量读取，不要硬编码
+# ==========================================================
+jwt:
+  secret: ${JWT_SECRET:}
+  access-token-expire: 3600000
+  refresh-token-expire: 604800000
+
+# ==========================================================
+# 异步线程池配置（由 AsyncConfig.java 读取，@Async 使用）
+# 用途：文档处理管道（DOC_PROCESS）、Ragas 评估（RAGAS_EVAL）
+# 异步方法不加 @Transactional（事务在异步线程中无效）
+# ==========================================================
+async:
+  thread-pool:
+    core-size: 4
+    max-size: 16
+    queue-capacity: 100
+    thread-name-prefix: kb-async-
+
+# ==========================================================
+# Python 侧车地址配置
+# 文档解析侧车：POST http://parser:8090/parse
+# Ragas 评估侧车：POST http://ragas-svc:8091/evaluate
+# Docker 内通过服务名互访，本地开发改为 localhost
+# ==========================================================
+sidecar:
+  parser-url: ${PARSER_URL:http://localhost:8090}
+  ragas-url: ${RAGAS_URL:http://localhost:8091}
+
+# ==========================================================
+# 开发环境日志：开启 SQL 日志 + 业务 DEBUG 日志
+# ==========================================================
+logging:
+  level:
+    com.kb: DEBUG
+    com.kb.app.module: DEBUG
+
+# ==========================================================
+# 开发环境 MyBatis-Plus：打印完整 SQL 语句
+# ==========================================================
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

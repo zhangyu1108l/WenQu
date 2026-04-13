@@ -1,0 +1,58 @@
+# ============================================================
+# 问渠（WenQu）— kb-app 主业务服务公共配置
+# 此文件放环境无关的通用配置，敏感信息在 application-{profile}.yml 中
+# ============================================================
+
+# ---------- 服务端口 ----------
+# kb-app 在 Docker 内部监听 8081，由 Gateway（8080）路由转发
+server:
+  port: 8081
+  servlet:
+    context-path: /
+
+# ---------- 激活的配置文件 ----------
+# 默认激活 dev 环境，部署时通过 --spring.profiles.active=prod 切换
+spring:
+  profiles:
+    active: dev
+
+  # ---------- 应用名称 ----------
+  application:
+    name: kb-app
+
+  # ---------- 文件上传限制 ----------
+  # 文档上传接口 POST /api/docs/upload 支持 PDF/DOCX，限制单文件最大 50MB
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  # ---------- Jackson 序列化 ----------
+  # 统一 JSON 响应格式，日期用 yyyy-MM-dd HH:mm:ss
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# ---------- MyBatis-Plus ----------
+mybatis-plus:
+  configuration:
+    # 开启下划线转驼峰映射（数据库 snake_case → Java camelCase）
+    map-underscore-to-camel-case: true
+    # 日志级别：dev 环境在 application-dev.yml 中单独开启 SQL 日志
+  global-config:
+    db-config:
+      # 主键策略：数据库自增（BIGINT AUTO_INCREMENT）
+      id-type: auto
+      # 逻辑删除（当前表结构未使用，保留默认值）
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ---------- 日志配置 ----------
+# 生产环境建议调整为 WARN；开发环境在 profile 中覆盖为 DEBUG
+logging:
+  level:
+    root: INFO
+    com.kb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

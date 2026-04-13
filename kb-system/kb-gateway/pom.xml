@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        kb-gateway — API 网关模块
+        职责：
+          1. 基于 Spring Cloud Gateway 的统一入口，所有外部请求经此路由到 kb-app
+          2. JwtAuthFilter：校验 JWT accessToken，解析后写入请求头 X-User-Id / X-Tenant-Id
+          3. TenantRouteFilter：租户路由与请求头注入
+          4. 登出黑名单校验（Redis 查询 jwt:blacklist:{token}）
+          5. 限流（可选，后续按需配置）
+        注意：Gateway 基于 WebFlux（Netty），不能引入 spring-boot-starter-web。
+    -->
+
+    <parent>
+        <groupId>com.kb</groupId>
+        <artifactId>kb-system</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>kb-gateway</artifactId>
+    <packaging>jar</packaging>
+    <name>kb-gateway</name>
+    <description>API 网关：JWT 校验、租户路由、请求头注入</description>
+
+    <dependencies>
+
+        <!-- 内部公共模块：复用 Result、枚举、异常定义 -->
+        <dependency>
+            <groupId>com.kb</groupId>
+            <artifactId>kb-common</artifactId>
+            <!-- 排除 Web（Servlet），Gateway 使用 WebFlux 不兼容 -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-web</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Spring Cloud Gateway：响应式网关，基于 WebFlux + Netty，
+             负责路由转发、全局过滤器链 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <!-- Redis（Reactive）：网关中校验 JWT 黑名单需要访问 Redis，
+             Gateway 是响应式的，必须用 reactive 版本 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+
+        <!-- JJWT API：JWT 令牌解析接口 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+        </dependency>
+
+        <!-- JJWT Impl：JWT 令牌解析实现（运行时） -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JJWT Jackson：JWT payload 的 JSON 序列化支持（运行时） -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Spring Boot 打包插件：构建可执行 JAR，内嵌 Netty 服务器 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

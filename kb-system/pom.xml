@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        问渠（WenQu）— 企业智能知识库问答系统
+        父 POM：统一管理所有子模块的依赖版本，不包含任何业务代码。
+        子模块只需声明 groupId + artifactId，版本由此处 dependencyManagement 锁定。
+    -->
+
+    <!-- ==================== 基本坐标 ==================== -->
+    <groupId>com.kb</groupId>
+    <artifactId>kb-system</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>kb-system</name>
+    <description>问渠 — 企业智能知识库问答系统（Maven 父工程）</description>
+
+    <!-- ==================== 子模块聚合 ==================== -->
+    <modules>
+        <module>kb-common</module>   <!-- 公共模块：统一响应体、枚举、异常处理 -->
+        <module>kb-gateway</module>  <!-- 网关模块：JWT 校验、租户路由、限流 -->
+        <module>kb-app</module>      <!-- 主业务模块：用户/文档/对话/管理/评估 -->
+    </modules>
+
+    <!-- ==================== 版本号集中管理 ==================== -->
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Spring 生态 -->
+        <spring-boot.version>3.2.12</spring-boot.version>
+        <spring-cloud.version>2023.0.4</spring-cloud.version>
+        <spring-ai.version>1.0.0</spring-ai.version>
+
+        <!-- 数据库 & ORM -->
+        <mybatis-plus.version>3.5.9</mybatis-plus.version>
+        <mysql-driver.version>8.0.33</mysql-driver.version>
+
+        <!-- 安全 & JWT -->
+        <jjwt.version>0.12.6</jjwt.version>
+
+        <!-- 对象存储 -->
+        <minio.version>8.5.14</minio.version>
+
+        <!-- 向量数据库 -->
+        <milvus.version>2.4.8</milvus.version>
+
+        <!-- 工具 -->
+        <lombok.version>1.18.36</lombok.version>
+    </properties>
+
+    <!-- ==================== 依赖版本锁定（BOM） ==================== -->
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- ===== Spring Boot BOM =====
+                 Spring Boot 3.2.x 统一管理 spring-boot-starter-*、
+                 spring-boot-starter-data-redis、jackson 等所有 Boot 生态依赖版本 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ===== Spring Cloud BOM =====
+                 Spring Cloud 2023.0.x 管理 Gateway 4.x、LoadBalancer 等版本，
+                 与 Spring Boot 3.2.x 版本对应 -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ===== Spring AI BOM =====
+                 Spring AI 1.0.0 统一管理 Spring AI 相关模块版本，
+                 用于对接 DeepSeek Chat（LLM）和智谱 embedding-3（向量化） -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ===== 内部子模块 =====
+                 kb-common 公共模块，供 kb-gateway 和 kb-app 依赖 -->
+            <dependency>
+                <groupId>com.kb</groupId>
+                <artifactId>kb-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- ===== MyBatis-Plus =====
+                 ORM 框架，替代原生 MyBatis；
+                 内置 TenantLineInnerInterceptor 实现多租户自动追加 tenant_id 条件 -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- ===== MySQL Driver =====
+                 MySQL 8.0 JDBC 驱动，连接关系型数据库 -->
+            <dependency>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
+                <version>${mysql-driver.version}</version>
+            </dependency>
+
+            <!-- ===== JJWT（JWT 令牌） =====
+                 手写 JWT 鉴权过滤器（不用 Spring Security），
+                 包含 API、实现、Jackson 序列化三个模块 -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <!-- ===== MinIO Java SDK =====
+                 对象存储客户端，每个租户独立 Bucket（tenant-{tenantId}），
+                 存储上传的 PDF/DOCX 文件 -->
+            <dependency>
+                <groupId>io.minio</groupId>
+                <artifactId>minio</artifactId>
+                <version>${minio.version}</version>
+            </dependency>
+
+            <!-- ===== Milvus Java SDK =====
+                 向量数据库客户端，每个租户独立 Collection（tenant_{tenantId}_docs），
+                 存储文档 Embedding 向量，支持 RAG 检索 -->
+            <dependency>
+                <groupId>io.milvus</groupId>
+                <artifactId>milvus-sdk-java</artifactId>
+                <version>${milvus.version}</version>
+            </dependency>
+
+            <!-- ===== Lombok =====
+                 编译期注解处理器，自动生成 getter/setter/builder 等样板代码，
+                 项目强制使用 @Data @Builder @Slf4j 等注解 -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ==================== 所有子模块公共依赖 ==================== -->
+    <dependencies>
+        <!-- Lombok：所有模块都需要，编译期生效 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- ==================== 构建配置 ==================== -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Spring Boot Maven 插件：用于打包可执行 JAR -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                    <configuration>
+                        <excludes>
+                            <!-- Lombok 仅编译期使用，不打入最终 JAR -->
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!-- Maven 编译插件：指定 Java 21 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>UTF-8</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- ==================== 仓库配置 ==================== -->
+    <repositories>
+        <!-- Spring AI 里程碑仓库（正式版可能需要） -->
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+</project>

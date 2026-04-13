@@ -1,0 +1,173 @@
+# ============================================================
+# 问渠（WenQu）— 本地开发环境 Docker Compose
+# 仅包含基础中间件，Java 服务和前端在本地运行
+# 启动命令：docker compose -f docker-compose-dev.yml --env-file .env up -d
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------------
+  # MySQL 8.0 — 关系型数据库
+  # 端口映射：宿主机 3306 → 容器 3306
+  # 用途：存储租户、用户、文档、对话、任务、评估等业务数据（共11张表）
+  # ----------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: kb-mysql
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kb_system}
+      MYSQL_USER: ${MYSQL_USER:-kb}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      # 数据持久化
+      - mysql-data:/var/lib/mysql
+      # 初始化 SQL 脚本（放入此目录的 .sql 文件会在首次启动时自动执行）
+      - ./sql/init:/docker-entrypoint-initdb.d
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --lower-case-table-names=1
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------
+  # Redis 7 — 缓存与会话存储
+  # 端口映射：宿主机 6379 → 容器 6379
+  # 用途：JWT 黑名单、对话历史滑动窗口（conv:{id}:history）
+  # ----------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: kb-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------
+  # etcd — Milvus 元数据存储（Milvus standalone 模式必需依赖）
+  # 仅内部访问，不对外暴露端口
+  # ----------------------------------------------------------------
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: kb-etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    volumes:
+      - etcd-data:/etcd
+    command: >
+      etcd
+      --advertise-client-urls=http://127.0.0.1:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ----------------------------------------------------------------
+  # MinIO — 对象存储
+  # 端口映射：宿主机 9000 → 容器 9000（API）
+  #           宿主机 9001 → 容器 9001（Web 管理控制台）
+  # 用途：文档原始文件存储，按租户隔离 Bucket（tenant-{tenantId}）
+  # ----------------------------------------------------------------
+  minio:
+    image: minio/minio
+    container_name: kb-minio
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------
+  # Milvus 2.4 standalone — 向量数据库
+  # 端口映射：宿主机 19530 → 容器 19530（gRPC API）
+  # 用途：文档向量存储与检索，按租户隔离 Collection（tenant_{tenantId}_docs）
+  # 向量维度：2048（智谱 embedding-3）
+  # 依赖：etcd（元数据）+ minio（向量数据持久化）
+  # ----------------------------------------------------------------
+  milvus:
+    image: milvusdb/milvus:v2.4-latest
+    container_name: kb-milvus
+    ports:
+      - "${MILVUS_PORT:-19530}:19530"
+      - "9091:9091"
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "false"
+    volumes:
+      - milvus-data:/var/lib/milvus
+    command: ["milvus", "run", "standalone"]
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 90s
+
+# ----------------------------------------------------------------
+# 数据卷定义 — 持久化各中间件数据，避免容器重建后数据丢失
+# ----------------------------------------------------------------
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  etcd-data:
+    driver: local
+  minio-data:
+    driver: local
+  milvus-data:
+    driver: local
+
+# ----------------------------------------------------------------
+# 网络定义 — 所有服务在 kb-net 中通过服务名互访
+# ----------------------------------------------------------------
+networks:
+  kb-net:
+    driver: bridge

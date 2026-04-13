@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        kb-app — 主业务模块
+        职责：
+          1. 用户认证（auth）：注册、登录、JWT 签发与刷新
+          2. 文档管理（document）：上传、版本管理、MinIO 存储、过期删除
+          3. 对话问答（chat）：会话管理、RAG 链路、SSE 流式推送
+          4. 系统管理（admin）：租户 CRUD、用户角色管理
+          5. 评估模块（eval）：评估用例管理、触发 Ragas 评估、报告查看
+          6. 异步任务（task）：async_task 表 + @Async 线程池 + 进度轮询
+          7. RAG 引擎（rag）：文档处理管道、问题改写、向量检索、重排序、流式生成
+        运行端口：8081（Docker 内部），由 Gateway 路由转发。
+    -->
+
+    <parent>
+        <groupId>com.kb</groupId>
+        <artifactId>kb-system</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>kb-app</artifactId>
+    <packaging>jar</packaging>
+    <name>kb-app</name>
+    <description>主业务模块：用户/文档/对话/管理/评估/RAG 全部业务逻辑</description>
+
+    <dependencies>
+
+        <!-- ===== 内部模块 ===== -->
+
+        <!-- 公共模块：Result、枚举、异常、校验注解等 -->
+        <dependency>
+            <groupId>com.kb</groupId>
+            <artifactId>kb-common</artifactId>
+        </dependency>
+
+        <!-- ===== Spring Boot Starters ===== -->
+
+        <!-- Web（Servlet）：提供 REST 控制器、SSE（SseEmitter）支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Redis：对话历史滑动窗口（conv:{id}:history）、JWT 黑名单 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- ===== Spring AI ===== -->
+
+        <!-- Spring AI OpenAI Starter：通过 OpenAI 兼容协议对接 DeepSeek Chat（LLM）
+             和智谱 embedding-3（向量化），统一由 Spring AI 管理 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
+        <!-- ===== 数据库 & ORM ===== -->
+
+        <!-- MyBatis-Plus：ORM 框架 + 多租户拦截器 TenantLineInnerInterceptor，
+             自动为所有 SQL 追加 AND tenant_id = ? -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+
+        <!-- MySQL JDBC 驱动 -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ===== 安全 & JWT ===== -->
+
+        <!-- JJWT API：JWT 签发、解析接口 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+        </dependency>
+
+        <!-- JJWT Impl：JWT 签发、解析实现（运行时） -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JJWT Jackson：JWT Claims 的 JSON 序列化（运行时） -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ===== 对象存储 ===== -->
+
+        <!-- MinIO SDK：文件上传/下载/预签名 URL，每租户独立 Bucket（tenant-{tenantId}） -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+        </dependency>
+
+        <!-- ===== 向量数据库 ===== -->
+
+        <!-- Milvus SDK：向量写入/检索/删除，每租户独立 Collection（tenant_{tenantId}_docs），
+             配合智谱 embedding-3（2048维）进行 RAG 检索 -->
+        <dependency>
+            <groupId>io.milvus</groupId>
+            <artifactId>milvus-sdk-java</artifactId>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Spring Boot 打包插件：构建可执行 JAR，内嵌 Tomcat 服务器 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
