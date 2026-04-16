@@ -110,6 +110,16 @@
                 <version>${mybatis-plus.version}</version>
             </dependency>
 
+            <!-- ===== JSqlParser 支持模块 =====
+                 MyBatis-Plus 3.5.9 将依赖 jsqlparser 的拦截器拆分到此模块，
+                 包含 TenantLineInnerInterceptor、PaginationInnerInterceptor 等，
+                 不引入此模块则这些类不可用 -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser-4.9</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
             <!-- ===== MySQL Driver =====
                  MySQL 8.0 JDBC 驱动，连接关系型数据库 -->
             <dependency>
