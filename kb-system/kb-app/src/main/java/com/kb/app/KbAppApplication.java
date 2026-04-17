@@ -1,7 +1,9 @@
 package com.kb.app;
 
+import com.kb.app.config.JwtProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
  * kb-app 主业务模块启动类。
@@ -12,6 +14,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author kb-system
  */
 @SpringBootApplication
+@EnableConfigurationProperties(JwtProperties.class)
 public class KbAppApplication {
 
     public static void main(String[] args) {
