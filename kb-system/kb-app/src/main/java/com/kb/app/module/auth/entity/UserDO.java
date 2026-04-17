@@ -1,6 +1,7 @@
 package com.kb.app.module.auth.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
@@ -51,8 +52,15 @@ public class UserDO {
     private String username;
 
     /**
-     * 密码哈希值，使用 BCrypt 加密，禁止存明文
+     * 密码哈希值（BCrypt 加密），对应数据库字段 password_hash。
+     * <p>
+     * 存储规则：必须使用 BCrypt 算法加密后存储，禁止存明文密码。
+     * 注册时通过 BCryptPasswordEncoder.encode() 生成哈希值，
+     * 登录时通过 BCryptPasswordEncoder.matches() 校验。
+     * <p>
+     * 显式声明 @TableField 映射，避免 camelCase 自动转换可能产生的歧义。
      */
+    @TableField("password_hash")
     private String passwordHash;
 
     /**

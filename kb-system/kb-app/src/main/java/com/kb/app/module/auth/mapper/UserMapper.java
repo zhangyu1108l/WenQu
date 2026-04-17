@@ -3,6 +3,8 @@ package com.kb.app.module.auth.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.kb.app.module.auth.entity.UserDO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 用户表 Mapper — 对应数据库 user 表。
@@ -23,8 +25,29 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface UserMapper extends BaseMapper<UserDO> {
-    // MyBatis-Plus BaseMapper 已提供：
-    //   insert / deleteById / updateById / selectById
-    //   selectList / selectPage / selectCount 等常用方法
-    // 如需自定义 SQL，在此接口中追加方法并配合 @Select 或 XML
+
+    /**
+     * 根据租户ID和用户名查询用户。
+     * <p>
+     * <b>为什么必须同时传 tenantId：</b>
+     * 不同租户下可能存在同名用户（如租户A和租户B都有 username=admin），
+     * 如果只按 username 查询，会跨租户查到其他租户的用户，违反租户隔离原则。
+     * 因此必须同时带 tenant_id + username 两个条件，确保查询结果严格限制在当前租户内。
+     * <p>
+     * 虽然 MyBatis-Plus 租户拦截器会自动追加 tenant_id 条件，
+     * 但此处显式写入 SQL 使意图更清晰，也便于代码审查时确认租户隔离逻辑。
+     * <p>
+     * 主要使用场景：
+     * <ul>
+     *     <li>登录：根据 tenantCode 解析出 tenantId，再查用户</li>
+     *     <li>注册：检查同租户下用户名是否已存在</li>
+     * </ul>
+     *
+     * @param tenantId 租户ID，不允许为 null
+     * @param username 用户名，不允许为 null
+     * @return 匹配的用户实体，不存在时返回 null
+     */
+    @Select("SELECT * FROM user WHERE tenant_id = #{tenantId} AND username = #{username} LIMIT 1")
+    UserDO selectByTenantIdAndUsername(@Param("tenantId") Long tenantId,
+                                      @Param("username") String username);
 }
