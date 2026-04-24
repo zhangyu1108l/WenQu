@@ -1,5 +1,6 @@
 package com.kb.app.module.auth.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.kb.app.module.auth.entity.UserDO;
 import org.apache.ibatis.annotations.Mapper;
@@ -50,4 +51,22 @@ public interface UserMapper extends BaseMapper<UserDO> {
     @Select("SELECT * FROM user WHERE tenant_id = #{tenantId} AND username = #{username} LIMIT 1")
     UserDO selectByTenantIdAndUsername(@Param("tenantId") Long tenantId,
                                       @Param("username") String username);
+
+    /**
+     * 根据用户ID查询用户，<b>跳过租户拦截器</b>。
+     * <p>
+     * <b>为什么需要忽略租户条件：</b>
+     * 此方法用于 Token 刷新场景，refreshToken 中仅携带 userId，
+     * 请求到达时 TenantContext 中没有 tenantId（公开接口，未经 JwtAuthFilter 解析）。
+     * 若不跳过租户拦截器，MyBatis-Plus 会自动追加 {@code AND tenant_id = NULL}，
+     * 而 SQL 中 {@code = NULL} 永远返回 false，导致查不到用户。
+     * <p>
+     * 按主键 id 查询已能唯一定位用户，无需租户隔离条件。
+     *
+     * @param id 用户主键ID，不允许为 null
+     * @return 匹配的用户实体，不存在时返回 null
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("SELECT * FROM user WHERE id = #{id} LIMIT 1")
+    UserDO selectByIdIgnoreTenant(@Param("id") Long id);
 }

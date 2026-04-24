@@ -1,6 +1,7 @@
 package com.kb.app;
 
 import com.kb.app.config.JwtProperties;
+import com.kb.app.config.MinioProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -13,8 +14,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  *
  * @author kb-system
  */
-@SpringBootApplication
-@EnableConfigurationProperties(JwtProperties.class)
+@SpringBootApplication(scanBasePackages = {"com.kb.app", "com.kb.common"})
+@EnableConfigurationProperties({JwtProperties.class, MinioProperties.class})
 public class KbAppApplication {
 
     public static void main(String[] args) {

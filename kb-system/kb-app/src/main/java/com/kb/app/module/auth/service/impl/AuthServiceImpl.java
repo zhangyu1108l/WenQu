@@ -242,7 +242,9 @@ public class AuthServiceImpl implements AuthService {
         Long userId = jwtUtil.getUserId(refreshToken);
 
         // ③ 根据 userId 查用户信息（获取最新的 tenantId 和 role）
-        UserDO user = userMapper.selectById(userId);
+        // 使用 selectByIdIgnoreTenant：refresh 是公开接口，TenantContext 无 tenantId，
+        // 需跳过租户拦截器，避免生成 tenant_id = NULL 导致查询为空
+        UserDO user = userMapper.selectByIdIgnoreTenant(userId);
         if (user == null) {
             throw BusinessException.of(1007, "用户不存在");
         }
