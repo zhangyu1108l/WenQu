@@ -266,3 +266,13 @@ CREATE TABLE eval_result
     created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_batch (batch_id) COMMENT '按批次查询明细的索引'
 ) COMMENT '评估结果明细表 — 每个用例在每次评估中的详细得分，供管理员面板逐条查看';
+
+
+-- ============================================================
+-- 业务用户创建（最小权限原则）
+-- kb 用户仅供 Spring Boot 应用连接，只拥有 CRUD 权限
+-- root 用户保留用于数据库初始化和运维管理
+-- ============================================================
+CREATE USER IF NOT EXISTS 'kb'@'%' IDENTIFIED BY 'KbApp@2024#Crud!Only';
+GRANT SELECT, INSERT, UPDATE, DELETE ON kb_system.* TO 'kb'@'%';
+FLUSH PRIVILEGES;
