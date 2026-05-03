@@ -211,15 +211,13 @@ public class DocumentServiceImpl implements DocumentService {
      * 删除文档及其所有关联资源。
      * <p>
      * <b>删除顺序说明（不可颠倒）：</b>
-     * 对每个版本依次执行以下步骤：
+     * 对每个版本依次执行以下步骤（顺序与架构文档 5.3 一致）：
      * <ol>
-     *     <li><b>查出 doc_chunk 的 milvus_id 列表</b> — 必须在删除 doc_chunk 之前，
-     *         否则 milvus_id 丢失后向量无法清理</li>
-     *     <li><b>删除 Milvus 向量</b>（TODO - Step 5 实现）— 通过 milvus_id 批量删除，
+     *     <li><b>删除 MinIO 文件</b> — 通过 document_version 中的 minio_bucket + minio_key 定位，
+     *         必须最先执行，否则存储路径丢失后文件变成孤儿</li>
+     *     <li><b>删除 Milvus 向量</b>（TODO - Step 5 实现）— 通过 doc_chunk 中的 milvus_id 批量删除，
      *         必须在删 doc_chunk 之前执行，因为 milvus_id 存在 doc_chunk 表中</li>
      *     <li><b>删除 doc_chunk 记录</b> — Milvus 向量已清理完毕后再删 MySQL 记录</li>
-     *     <li><b>删除 MinIO 文件</b> — 通过 document_version 中的 minio_bucket + minio_key 定位，
-     *         必须在删 document_version 之前执行，否则存储路径丢失文件变成孤儿</li>
      *     <li><b>删除 document_version 记录</b> — 以上资源全部清理完毕后，安全删除版本记录</li>
      * </ol>
      * 最后删除 document 记录本身。
@@ -246,13 +244,19 @@ public class DocumentServiceImpl implements DocumentService {
             log.info("清理版本资源: docId={}, versionId={}, versionNo={}",
                     documentId, version.getId(), version.getVersionNo());
 
-            // ③-a 查出该版本下所有 doc_chunk 的 milvus_id 列表
+            // ③-a 删除 MinIO 文件（第 1 步）
+            // 必须最先执行：如果先删 MySQL 记录，minio_bucket / minio_key 信息丢失，
+            // MinIO 中的文件会变成无法追踪的"孤儿文件"
+            minioUtil.deleteFile(version.getMinioBucket(), version.getMinioKey());
+
+            // ③-b 查出该版本下所有 doc_chunk 的 milvus_id 列表
+            // 必须在删 doc_chunk 之前查出，否则 milvus_id 丢失后向量无法清理
             List<DocChunkDO> chunks = docChunkMapper.selectByVersionId(version.getId());
             List<String> milvusIds = chunks.stream()
                     .map(DocChunkDO::getMilvusId)
                     .collect(Collectors.toList());
 
-            // ③-b 【TODO - Step 5 实现】批量删除 Milvus 向量
+            // ③-c 【TODO - Step 5 实现】批量删除 Milvus 向量（第 2 步）
             // 通过 milvus_id 列表在 tenant_{tenantId}_docs Collection 中批量删除向量
             // 必须在删除 doc_chunk 之前执行，否则 milvus_id 信息丢失
             if (!milvusIds.isEmpty()) {
@@ -262,16 +266,12 @@ public class DocumentServiceImpl implements DocumentService {
                         version.getId(), milvusIds.size());
             }
 
-            // ③-c 删除 doc_chunk 记录
+            // ③-d 删除 doc_chunk 记录（第 3 步）
             int deletedChunks = docChunkMapper.deleteByVersionId(version.getId());
             log.info("doc_chunk 记录已删除: versionId={}, 删除数量={}",
                     version.getId(), deletedChunks);
 
-            // ③-d 删除 MinIO 文件
-            // 必须在删除 document_version 之前执行，否则 minio_bucket / minio_key 信息丢失
-            minioUtil.deleteFile(version.getMinioBucket(), version.getMinioKey());
-
-            // ③-e 删除 document_version 记录
+            // ③-e 删除 document_version 记录（第 4 步）
             documentVersionMapper.deleteById(version.getId());
             log.info("版本记录已删除: versionId={}", version.getId());
         }
