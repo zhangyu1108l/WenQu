@@ -28,6 +28,7 @@ gateway:
     paths:
       - /api/auth/register
       - /api/auth/login
+      - /api/auth/refresh
 
 # ---------- 日志配置 ----------
 logging:

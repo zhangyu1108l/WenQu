@@ -10,10 +10,12 @@ import java.util.List;
  * <p>
  * 白名单中的路径不需要 JWT 鉴权，JwtAuthFilter 会直接放行。
  * <p>
- * 默认白名单包含注册和登录两个公开接口：
+ * 默认白名单包含注册、登录和刷新三个公开接口：
  * <ul>
  *     <li>/api/auth/register — 用户注册</li>
  *     <li>/api/auth/login — 用户登录</li>
+ *     <li>/api/auth/refresh — 刷新 Token（refreshToken 只含 userId，无 tenantId/role，
+ *         无法通过 Gateway 的 JWT 完整校验，因此放入白名单，由 kb-app 内部自行校验）</li>
  * </ul>
  * <p>
  * 对应 yml 配置示例：
@@ -39,6 +41,7 @@ public class WhiteListProperties {
      */
     private List<String> paths = List.of(
             "/api/auth/register",
-            "/api/auth/login"
+            "/api/auth/login",
+            "/api/auth/refresh"
     );
 }

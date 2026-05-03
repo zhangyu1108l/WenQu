@@ -1,5 +1,6 @@
 package com.kb.gateway.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
@@ -23,6 +24,10 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(WhiteListProperties.class)
 public class GatewayConfig {
 
+    /** kb-app 服务地址，从配置文件读取，本地开发为 http://localhost:8082 */
+    @Value("${gateway.app-service-url:http://app:8081}")
+    private String appServiceUrl;
+
     /**
      * 定义 Gateway 路由规则。
      * <p>
@@ -39,7 +44,7 @@ public class GatewayConfig {
                 // /api/** → kb-app 主业务服务
                 .route("kb-app-route", r -> r
                         .path("/api/**")
-                        .uri("${gateway.app-service-url:http://app:8081}"))
+                        .uri(appServiceUrl))
                 .build();
     }
 }
