@@ -1,5 +1,6 @@
 package com.kb.app.module.document.service;
 
+import com.kb.app.module.document.entity.DocumentDO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
@@ -35,4 +36,18 @@ public interface DocUploadService {
      * @return 包含 docId 和 taskId 的 Map
      */
     Map<String, Long> upload(MultipartFile file, Long tenantId, Long userId);
+
+    /**
+     * 异步执行文档处理管道。
+     * <p>
+     * 此方法声明在接口中，是为了让 Spring AOP 代理能正确拦截 @Async 注解。
+     * 调用方通过接口代理对象调用此方法，确保 @Async 生效。
+     *
+     * @param doc       文档实体
+     * @param fileBytes 文件字节数组（已在主线程读取）
+     * @param filename  原始文件名（含扩展名）
+     * @param taskId    异步任务ID
+     * @param tenantId  租户ID
+     */
+    void processAsync(DocumentDO doc, byte[] fileBytes, String filename, Long taskId, Long tenantId);
 }

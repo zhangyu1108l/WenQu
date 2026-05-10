@@ -14,6 +14,7 @@ import com.kb.common.enums.TaskType;
 import com.kb.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,6 +55,7 @@ public class DocUploadServiceImpl implements DocUploadService {
     private final AsyncTaskService asyncTaskService;
     private final ParserClient parserClient;
     private final MinioUtil minioUtil;
+    private final ApplicationContext applicationContext;
 
     /** 允许上传的文件扩展名白名单 */
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "docx");
@@ -133,8 +135,10 @@ public class DocUploadServiceImpl implements DocUploadService {
             throw BusinessException.of(3003, "读取上传文件失败");
         }
 
-        // ⑤ 调用异步方法执行后续处理（不等待）
-        processAsync(doc, fileBytes, originalFilename, task.getId(), tenantId);
+        // ⑤ 通过 Spring 容器获取代理对象调用异步方法，
+        // 避免同类内自调用导致 @Async 失效（Spring AOP 代理不拦截 this 调用）
+        DocUploadService proxy = applicationContext.getBean(DocUploadService.class);
+        proxy.processAsync(doc, fileBytes, originalFilename, task.getId(), tenantId);
 
         // ⑥ 立即返回 {docId, taskId}
         Map<String, Long> result = new HashMap<>(4);
@@ -176,6 +180,7 @@ public class DocUploadServiceImpl implements DocUploadService {
      * @param taskId       异步任务ID
      * @param tenantId     租户ID
      */
+    @Override
     @Async("docProcessPool")
     public void processAsync(DocumentDO doc, byte[] fileBytes,
                              String filename, Long taskId, Long tenantId) {
