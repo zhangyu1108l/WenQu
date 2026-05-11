@@ -1,18 +1,21 @@
 package com.kb.app.rag.client;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.kb.app.rag.dto.ChunkDTO;
+import com.kb.common.exception.BusinessException;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -22,35 +25,17 @@ import java.util.List;
 /**
  * Python 文档解析侧车 HTTP 客户端。
  * <p>
- * 调用 Python FastAPI 侧车的 POST /parse 接口，发送文件字节流，
- * 接收解析后的 chunk 列表（文本分块结果）。
- * <p>
- * <b>请求格式：</b>multipart/form-data，包含两个字段：
- * <ul>
- *     <li>file — 文件字节流</li>
- *     <li>file_type — 文件类型（pdf / docx）</li>
- * </ul>
- * <p>
- * <b>降级处理说明：</b>
- * 如果 Python 侧车不可用（连接超时、500 错误等），本方法会抛出 RuntimeException，
- * 由上层调用方（DocUploadServiceImpl.processAsync）捕获异常后：
- * <ul>
- *     <li>将 async_task 状态标记为 FAILED</li>
- *     <li>将 document 状态标记为 FAILED</li>
- *     <li>记录错误日志，便于运维排查侧车服务状态</li>
- * </ul>
- * 当前版本不做自动重试，后续可根据需要引入重试机制。
- *
- * @author kb-system
+ * 负责调用 kb-parser 的 /parse 和 /health 接口，将 Java 上传文件转换为
+ * Python 侧车可识别的 multipart/form-data 请求。
  */
 @Slf4j
 @Component
 public class ParserClient {
 
     /**
-     * Python 解析侧车基础地址，从配置文件读取。
-     * 开发环境：http://localhost:8090
-     * Docker 环境：http://parser:8090
+     * Python 解析侧车基础地址。
+     * <p>
+     * 开发环境通常为 http://localhost:8090，Docker 网络内为 http://parser:8090。
      */
     @Value("${sidecar.parser-url}")
     private String parserBaseUrl;
@@ -62,23 +47,15 @@ public class ParserClient {
     }
 
     /**
-     * 调用 Python 侧车解析文档，返回 chunk 列表。
+     * 调用 Python 解析侧车解析文档，返回 chunk 列表。
      * <p>
-     * 使用 multipart/form-data 格式发送文件字节和文件类型，
-     * Python 侧车根据 file_type 选择对应的解析策略（PDF / Word）。
-     * <p>
-     * <b>异常场景：</b>
-     * <ul>
-     *     <li>侧车未启动 → RestClientException（Connection refused）</li>
-     *     <li>侧车解析失败 → HTTP 500 + 错误信息</li>
-     *     <li>文件格式不支持 → HTTP 400</li>
-     * </ul>
-     * 以上异常均包装为 RuntimeException 向上抛出，由异步任务统一处理。
+     * multipart 请求构建方式：外层设置 Content-Type 为 multipart/form-data；
+     * file 字段使用 ByteArrayResource 包装文件字节，并重写 getFilename()，
+     * 让 RestTemplate 按文件 Part 发送；file_type 字段作为普通表单字段传入。
      *
      * @param fileBytes 文件字节数组
-     * @param fileType  文件类型（pdf / docx）
+     * @param fileType  文件类型，支持 pdf / docx
      * @return 解析后的 chunk 列表
-     * @throws RuntimeException 侧车不可用或解析失败时抛出
      */
     public List<ChunkDTO> parse(byte[] fileBytes, String fileType) {
         String url = parserBaseUrl + "/parse";
@@ -86,14 +63,10 @@ public class ParserClient {
                 url, fileType, fileBytes.length);
 
         try {
-            // 构建 multipart/form-data 请求体
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-
-            // 文件字段：使用 ByteArrayResource 包装字节数组，并重写 getFilename()
-            // 使 RestTemplate 能正确发送 multipart 文件
             ByteArrayResource fileResource = new ByteArrayResource(fileBytes) {
                 @Override
                 public String getFilename() {
@@ -104,32 +77,64 @@ public class ParserClient {
             body.add("file_type", fileType);
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-            // 发送请求并解析响应
             ResponseEntity<ParseResponse> response = restTemplate.postForEntity(
                     url, requestEntity, ParseResponse.class);
 
-            if (response.getBody() == null || response.getBody().getChunks() == null) {
-                log.warn("Python 侧车返回空结果: url={}, fileType={}", url, fileType);
+            if (response.getStatusCode() != HttpStatus.OK) {
+                log.warn("Python 解析侧车返回非 200 状态: url={}, status={}", url, response.getStatusCode());
+                throw BusinessException.of(4002, "解析服务返回错误");
+            }
+
+            ParseResponse responseBody = response.getBody();
+            if (responseBody == null || responseBody.getChunks() == null) {
+                log.warn("Python 解析侧车返回空结果: url={}, fileType={}", url, fileType);
                 return Collections.emptyList();
             }
 
-            List<ChunkDTO> chunks = response.getBody().getChunks();
+            List<ChunkDTO> chunks = responseBody.getChunks();
             log.info("Python 解析侧车返回: chunkCount={}", chunks.size());
             return chunks;
-
+        } catch (ResourceAccessException e) {
+            // 连接失败、连接超时、读取超时都属于 I/O 不可达场景，按侧车不可用处理。
+            log.error("Python 解析侧车不可用: url={}, fileType={}, error={}",
+                    url, fileType, e.getMessage());
+            throw BusinessException.of(4001, "解析服务不可用");
+        } catch (HttpStatusCodeException e) {
+            // HTTP 4xx/5xx 表示侧车已响应但解析失败，按解析服务返回错误处理。
+            log.error("Python 解析侧车返回错误: url={}, fileType={}, status={}, body={}",
+                    url, fileType, e.getStatusCode(), e.getResponseBodyAsString());
+            throw BusinessException.of(4002, "解析服务返回错误");
         } catch (RestClientException e) {
-            // 侧车连接失败、超时、HTTP 错误等
+            // 其他 RestTemplate 异常保留为兜底解析失败，避免泄露底层实现细节。
             log.error("调用 Python 解析侧车失败: url={}, fileType={}, error={}",
                     url, fileType, e.getMessage());
-            throw new RuntimeException("文档解析失败：Python 侧车不可用 (" + e.getMessage() + ")", e);
+            throw BusinessException.of(4003, "文档解析失败");
         }
     }
 
     /**
-     * Python 侧车响应体内部类。
+     * 检查 Python 解析侧车是否存活。
      * <p>
-     * 对应 Python 接口返回格式：{"chunks": [...]}
+     * 此方法可在文档上传前选择性调用，用于快速判断侧车服务是否可用，
+     * 避免用户提交后才在异步任务中发现解析服务不可达。
+     *
+     * @return true 表示侧车可用，false 表示不可用
+     */
+    public boolean checkHealth() {
+        String url = parserBaseUrl + "/health";
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (RestClientException e) {
+            log.warn("Python 解析侧车健康检查失败: url={}, error={}", url, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Python 侧车响应体。
+     * <p>
+     * 仅映射当前 Java 流程需要的 chunks 数组，其余响应字段由 Jackson 忽略。
      */
     @Data
     private static class ParseResponse {
