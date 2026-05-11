@@ -5,6 +5,8 @@ import com.kb.app.module.document.service.DocUploadService;
 import com.kb.app.module.document.service.DocumentService;
 import com.kb.common.dto.PageDTO;
 import com.kb.common.dto.Result;
+import com.kb.common.enums.UserRole;
+import com.kb.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -70,7 +72,9 @@ public class DocumentController {
     public Result<UploadResponse> upload(
             @RequestParam("file") MultipartFile file,
             @RequestHeader("X-Tenant-Id") Long tenantId,
-            @RequestHeader("X-User-Id") Long userId) {
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader(value = "X-User-Role", required = false) Integer userRole) {
+        assertAdminRole(userRole);
         Map<String, Long> result = docUploadService.upload(file, tenantId, userId);
         UploadResponse response = UploadResponse.builder()
                 .docId(result.get("docId"))
@@ -186,7 +190,9 @@ public class DocumentController {
     public Result<Void> setExpire(
             @PathVariable("id") Long id,
             @RequestHeader("X-Tenant-Id") Long tenantId,
+            @RequestHeader(value = "X-User-Role", required = false) Integer userRole,
             @RequestBody ExpireRequest request) {
+        assertAdminRole(userRole);
         documentService.setExpireAt(id, tenantId, request.getExpireAt());
         return Result.ok();
     }
@@ -208,8 +214,18 @@ public class DocumentController {
     @DeleteMapping("/{id}")
     public Result<Void> delete(
             @PathVariable("id") Long id,
-            @RequestHeader("X-Tenant-Id") Long tenantId) {
+            @RequestHeader("X-Tenant-Id") Long tenantId,
+            @RequestHeader(value = "X-User-Role", required = false) Integer userRole) {
+        assertAdminRole(userRole);
         documentService.deleteDocument(id, tenantId);
         return Result.ok();
+    }
+
+    private void assertAdminRole(Integer userRole) {
+        if (userRole == null
+                || (userRole != UserRole.SUPER_ADMIN.getCode()
+                && userRole != UserRole.TENANT_ADMIN.getCode())) {
+            throw BusinessException.of(403, "无权限，需租户管理员或超级管理员");
+        }
     }
 }
