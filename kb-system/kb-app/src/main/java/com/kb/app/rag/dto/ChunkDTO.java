@@ -63,6 +63,7 @@ public class ChunkDTO {
      *     <li>heading — 按标题结构切分</li>
      *     <li>paragraph — 按段落（双换行符）切分</li>
      *     <li>length — 长度兜底切分（512 token，50 token 重叠）</li>
+     *     <li>table — 整张表格一个 chunk（Markdown），不拆分</li>
      * </ul>
      */
     @JsonProperty("chunk_type")

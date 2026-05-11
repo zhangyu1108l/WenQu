@@ -32,7 +32,7 @@ class PdfParser:
 
     # 扫描版判定阈值：前几页平均字符数低于此值则认为是扫描版
     # pdfplumber 对扫描版 PDF 几乎提取不到文字，通常每页只有零星几个字符
-    SCAN_THRESHOLD = 50
+    SCAN_THRESHOLD = 100
 
     # 扫描版检测时取样的最大页数，避免大文件（数百页）全部检测导致处理缓慢
     SCAN_CHECK_MAX_PAGES = 3
@@ -99,10 +99,10 @@ class PdfParser:
         判断 PDF 是否是扫描版
 
         判定逻辑：
-          1. 取前 N 页（最多3页，避免大文件处理慢——数百页的 PDF 只需前几页即可判断）
-          2. 用 pdfplumber 提取每页文字，计算平均字符数
-          3. 平均字符数 < 50 则判定为扫描版
-             扫描版 PDF 的文字层几乎为空，pdfplumber 提取到的字符极少（通常 < 10）
+          1. 取前 N 页（最多 SCAN_CHECK_MAX_PAGES 页，避免大文件处理慢）
+          2. 用 pdfplumber 提取每页文字，对非空页累计字符数后除以页数，得到平均每页字符数
+          3. 平均每页字符数 < SCAN_THRESHOLD（100）则判定为扫描版
+             扫描版 PDF 的文字层几乎为空，pdfplumber 提取到的字符极少（通常远低于 100）
 
         Args:
             pdf: 已打开的 pdfplumber.PDF 对象
@@ -125,8 +125,8 @@ class PdfParser:
 
         avg_chars = total_chars / check_pages
 
-        # 阈值50的来源：正常文字版 PDF 每页至少有数百字符，
-        # 而扫描版用 pdfplumber 提取通常只有 0~20 个字符（页眉页码等极少量文字层）
+        # 阈值 SCAN_THRESHOLD（100）与架构约定一致：正常文字版每页通常数百字符，
+        # 扫描版用 pdfplumber 提取往往极少（页眉页码等零星文字层）。
         logger.debug("扫描版检测: 前%d页平均字符数=%.1f, 阈值=%d", check_pages, avg_chars, self.SCAN_THRESHOLD)
         return avg_chars < self.SCAN_THRESHOLD
 
@@ -241,15 +241,11 @@ class PdfParser:
 
                 # 置信度过滤：conf 为 -1 表示非文字区域，< 阈值表示识别不可靠
                 # 低置信度结果通常是图片噪点、水印残影等，保留会引入垃圾文字
-                if isinstance(conf, int) and conf < self.OCR_CONFIDENCE_THRESHOLD:
-                    continue
-                # pytesseract 有时返回字符串类型的 conf
-                if isinstance(conf, str):
-                    try:
-                        if int(conf) < self.OCR_CONFIDENCE_THRESHOLD:
-                            continue
-                    except ValueError:
+                try:
+                    if float(conf) < self.OCR_CONFIDENCE_THRESHOLD:
                         continue
+                except (TypeError, ValueError):
+                    continue
 
                 word = text.strip()
                 if not word:

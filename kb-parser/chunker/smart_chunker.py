@@ -93,11 +93,11 @@ class SmartChunker:
             is an independent semantic unit and should not participate in text
             fallback decisions.
         """
-        _ = file_type
+        normalized_file_type = (file_type or "").strip().lower()
 
         if self._has_heading_structure(text_blocks):
             chunks = self._chunk_by_heading(text_blocks)
-        elif self._has_paragraph_structure(text_blocks):
+        elif self._has_paragraph_structure(text_blocks, normalized_file_type):
             chunks = self._chunk_by_paragraph(text_blocks)
         else:
             text = self._join_block_texts(text_blocks, separator="\n")
@@ -106,10 +106,14 @@ class SmartChunker:
         for table in tables:
             chunks.append(self._table_to_chunk(table, len(chunks)))
 
+        # 文本块过小可丢弃；表格整表一个 chunk，不因 min_chunk_chars 误删短表
         chunks = [
             chunk
             for chunk in chunks
-            if chunk.content and len(chunk.content.strip()) >= self.min_chunk_chars
+            if chunk.content and (
+                len(chunk.content.strip()) >= self.min_chunk_chars
+                or chunk.chunk_type == "table"
+            )
         ]
 
         chunks.sort(key=lambda chunk: (
@@ -146,7 +150,11 @@ class SmartChunker:
         heading_count = sum(1 for block in text_blocks if self._is_heading(block))
         return heading_count >= 2
 
-    def _has_paragraph_structure(self, text_blocks: List[dict]) -> bool:
+    def _has_paragraph_structure(
+        self,
+        text_blocks: List[dict],
+        file_type: str = "",
+    ) -> bool:
         """
         Determine whether the document has paragraph separators.
 
@@ -154,14 +162,21 @@ class SmartChunker:
             text_blocks: Parsed text blocks.
 
         Returns:
-            bool: True when at least three double-newline separators exist.
+            bool: True when paragraph boundaries are available.
 
         Notes:
             A double newline is a common paragraph separator in extracted text,
-            so repeated occurrences indicate paragraph-level structure.
+            so its presence indicates paragraph-level structure. Word parsing
+            already emits one block per paragraph, so multiple Word text blocks
+            are also treated as paragraph structure.
         """
         text = self._join_block_texts(text_blocks, separator="\n")
-        return text.count("\n\n") >= 3
+        if "\n\n" in text:
+            return True
+
+        return file_type == "docx" and sum(
+            1 for block in text_blocks if self._get_text(block)
+        ) >= 2
 
     def _chunk_by_heading(self, text_blocks: List[dict]) -> List[ChunkModel]:
         """
@@ -345,7 +360,7 @@ class SmartChunker:
         return self._make_chunk(
             content=content,
             chunk_index=chunk_index,
-            chunk_type="heading",
+            chunk_type="table",
             heading_path=table.get("heading_path"),
             page_no=table.get("page_no"),
         )

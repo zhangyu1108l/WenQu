@@ -41,7 +41,8 @@ class ChunkModel(BaseModel):
             "分块类型，取值范围："
             "heading - 基于标题层级切分（Word标题样式/PDF书签）；"
             "paragraph - 基于双换行符的段落切分；"
-            "length - 长度兜底切分（512 token，50 token 重叠）"
+            "length - 长度兜底切分（512 token，50 token 重叠）；"
+            "table - 整张表格一个 chunk（Markdown），不拆分"
         )
     )
 
