@@ -5,6 +5,7 @@ import com.kb.app.config.MinioProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * kb-app 主业务模块启动类。
@@ -16,6 +17,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  */
 @SpringBootApplication(scanBasePackages = {"com.kb.app", "com.kb.common"})
 @EnableConfigurationProperties({JwtProperties.class, MinioProperties.class})
+@EnableScheduling
 public class KbAppApplication {
 
     public static void main(String[] args) {

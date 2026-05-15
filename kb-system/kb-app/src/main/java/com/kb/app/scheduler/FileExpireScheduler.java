@@ -1,7 +1,5 @@
 package com.kb.app.scheduler;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.kb.app.module.document.entity.DocumentDO;
 import com.kb.app.module.document.entity.DocumentVersionDO;
 import com.kb.app.module.document.mapper.DocumentMapper;
@@ -9,7 +7,6 @@ import com.kb.app.module.document.mapper.DocumentVersionMapper;
 import com.kb.app.util.MinioUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -43,7 +40,6 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@EnableScheduling
 @RequiredArgsConstructor
 public class FileExpireScheduler {
 
@@ -73,16 +69,16 @@ public class FileExpireScheduler {
      * <p>
      * 单个文档清理失败不影响其他文档的清理，异常被捕获并记录日志。
      */
-    @Scheduled(cron = "0 0 2 * * ?") // 每天凌晨2点执行
+    @Scheduled(
+            cron = "${document.expire-clean.cron:0 0 2 * * ?}",
+            zone = "${document.expire-clean.zone:Asia/Shanghai}"
+    )
     public void cleanExpiredFiles() {
         log.info("===== 文件过期清理任务开始 =====");
 
         // ① 查询所有过期文档：expire_at IS NOT NULL AND expire_at < NOW()
-        // 定时任务无 TenantContext，拦截器不追加 tenant_id 条件，实现跨租户扫描
-        List<DocumentDO> expiredDocs = documentMapper.selectList(
-                new LambdaQueryWrapper<DocumentDO>()
-                        .isNotNull(DocumentDO::getExpireAt)
-                        .lt(DocumentDO::getExpireAt, LocalDateTime.now()));
+        // 定时任务无 TenantContext，使用专用 Mapper 方法跳过租户拦截器，实现跨租户扫描
+        List<DocumentDO> expiredDocs = documentMapper.selectExpiredIgnoreTenant(LocalDateTime.now());
 
         if (expiredDocs.isEmpty()) {
             log.info("没有过期文档需要清理");
@@ -143,11 +139,7 @@ public class FileExpireScheduler {
         }
 
         // ④ 将 expire_at 置为 null，标记已处理，避免下次定时任务重复清理
-        documentMapper.update(null,
-                new LambdaUpdateWrapper<DocumentDO>()
-                        .eq(DocumentDO::getId, doc.getId())
-                        .set(DocumentDO::getExpireAt, null));
+        documentMapper.clearExpireAtIgnoreTenant(doc.getId());
         log.info("文档过期标记已清除: docId={}", doc.getId());
     }
 }
-

@@ -1,11 +1,15 @@
 package com.kb.app.module.document.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.kb.app.module.document.entity.DocumentDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 逻辑文档表 Mapper — 对应数据库 document 表。
@@ -59,4 +63,27 @@ public interface DocumentMapper extends BaseMapper<DocumentDO> {
      */
     @Update("UPDATE document SET status = #{status} WHERE id = #{id}")
     void updateStatus(@Param("id") Long id, @Param("status") String status);
+
+    /**
+     * 查询所有已过期文档，供后台定时清理任务跨租户扫描使用。
+     * <p>
+     * 定时线程没有请求上下文，TenantContext 中没有 tenantId。这里必须显式跳过
+     * TenantLineInnerInterceptor，否则 SQL 会被追加 tenant_id = NULL，导致查不到数据。
+     *
+     * @param now 当前时间
+     * @return 已到期且尚未处理的文档列表
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("SELECT * FROM document WHERE expire_at IS NOT NULL AND expire_at < #{now}")
+    List<DocumentDO> selectExpiredIgnoreTenant(@Param("now") LocalDateTime now);
+
+    /**
+     * 清除文档过期标记，供后台定时清理任务跨租户更新使用。
+     *
+     * @param id 文档ID
+     * @return 更新行数
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Update("UPDATE document SET expire_at = NULL WHERE id = #{id}")
+    int clearExpireAtIgnoreTenant(@Param("id") Long id);
 }
