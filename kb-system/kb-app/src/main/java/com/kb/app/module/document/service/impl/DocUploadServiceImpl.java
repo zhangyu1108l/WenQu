@@ -1,6 +1,7 @@
 package com.kb.app.module.document.service.impl;
 
 import com.kb.app.module.document.entity.DocumentDO;
+import com.kb.app.module.document.entity.DocumentVersionDO;
 import com.kb.app.module.document.mapper.DocumentMapper;
 import com.kb.app.module.document.service.DocUploadService;
 import com.kb.app.module.document.service.DocumentVersionService;
@@ -8,6 +9,7 @@ import com.kb.app.module.task.entity.AsyncTaskDO;
 import com.kb.app.module.task.service.AsyncTaskService;
 import com.kb.app.rag.client.ParserClient;
 import com.kb.app.rag.dto.ChunkDTO;
+import com.kb.app.rag.embedding.EmbeddingService;
 import com.kb.app.util.MinioUtil;
 import com.kb.common.enums.DocStatus;
 import com.kb.common.enums.TaskType;
@@ -54,6 +56,7 @@ public class DocUploadServiceImpl implements DocUploadService {
     private final DocumentVersionService versionService;
     private final AsyncTaskService asyncTaskService;
     private final ParserClient parserClient;
+    private final EmbeddingService embeddingService;
     private final MinioUtil minioUtil;
     private final ApplicationContext applicationContext;
 
@@ -210,12 +213,13 @@ public class DocUploadServiceImpl implements DocUploadService {
             // 作用：前端轮询时可根据文档状态展示当前处理阶段（"向量化中"）
             documentMapper.updateStatus(doc.getId(), DocStatus.EMBEDDING.name());
 
-            // ⑦ 【TODO - Step 5 实现】批量 Embedding + 写 Milvus + 写 doc_chunk
-            // 依赖 Step 5 的 Milvus 配置和智谱 Embedding 集成：
-            //   a. 对每个 chunk.content 调用智谱 embedding-3 生成 2048 维向量
-            //   b. 将向量写入 Milvus Collection（tenant_{tenantId}_docs）
-            //   c. 将 chunk 信息 + milvus_id 写入 doc_chunk 表
-            // 当前跳过此步骤，直接进入下一步
+            // ⑦ 批量向量化并写入 Milvus + MySQL doc_chunk 表
+            // batchEmbedAndStore 内部会批量调用智谱 embedding-3 完成向量化，
+            // 将向量写入 Milvus，并把 chunk 元数据与 milvus_id 写入 MySQL doc_chunk 表。
+            // 这一步是整个处理流程最耗时的部分：需要分批调用智谱 API，
+            // 每批都要等待一次网络往返时间，chunk 越多耗时越明显。
+            DocumentVersionDO activeVersion = versionService.getActiveVersion(doc.getId());
+            embeddingService.batchEmbedAndStore(chunks, doc, activeVersion);
             asyncTaskService.running(taskId, 90);
 
             // ⑧ 更新 document.status = READY
