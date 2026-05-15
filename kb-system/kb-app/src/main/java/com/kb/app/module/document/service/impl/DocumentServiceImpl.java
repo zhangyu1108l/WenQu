@@ -12,6 +12,7 @@ import com.kb.app.module.document.mapper.DocChunkMapper;
 import com.kb.app.module.document.mapper.DocumentMapper;
 import com.kb.app.module.document.mapper.DocumentVersionMapper;
 import com.kb.app.module.document.service.DocumentService;
+import com.kb.app.rag.embedding.EmbeddingService;
 import com.kb.app.util.MinioUtil;
 import com.kb.common.dto.PageDTO;
 import com.kb.common.exception.BusinessException;
@@ -45,6 +46,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentVersionMapper documentVersionMapper;
     private final DocChunkMapper docChunkMapper;
     private final MinioUtil minioUtil;
+    private final EmbeddingService embeddingService;
 
     /** 预签名 URL 默认有效期（分钟） */
     private static final int PRESIGNED_EXPIRE_MINUTES = 15;
@@ -215,7 +217,7 @@ public class DocumentServiceImpl implements DocumentService {
      * <ol>
      *     <li><b>删除 MinIO 文件</b> — 通过 document_version 中的 minio_bucket + minio_key 定位，
      *         必须最先执行，否则存储路径丢失后文件变成孤儿</li>
-     *     <li><b>删除 Milvus 向量</b>（TODO - Step 5 实现）— 通过 doc_chunk 中的 milvus_id 批量删除，
+     *     <li><b>删除 Milvus 向量</b> — 通过 doc_chunk 中的 milvus_id 批量删除，
      *         必须在删 doc_chunk 之前执行，因为 milvus_id 存在 doc_chunk 表中</li>
      *     <li><b>删除 doc_chunk 记录</b> — Milvus 向量已清理完毕后再删 MySQL 记录</li>
      *     <li><b>删除 document_version 记录</b> — 以上资源全部清理完毕后，安全删除版本记录</li>
@@ -256,14 +258,11 @@ public class DocumentServiceImpl implements DocumentService {
                     .map(DocChunkDO::getMilvusId)
                     .collect(Collectors.toList());
 
-            // ③-c 【TODO - Step 5 实现】批量删除 Milvus 向量（第 2 步）
-            // 通过 milvus_id 列表在 tenant_{tenantId}_docs Collection 中批量删除向量
-            // 必须在删除 doc_chunk 之前执行，否则 milvus_id 信息丢失
+            // ③-c 批量删除 Milvus 向量（第 2 步）
+            // 必须在删除 MySQL 记录前执行：doc_chunk 删除后 milvus_id 就找不到了，
+            // 对应向量会成为 Milvus 中无法追踪、无法清理的永久孤儿。
             if (!milvusIds.isEmpty()) {
-                // TODO: Step 5 实现 Milvus 向量删除
-                // MilvusUtil.deleteVectors("tenant_" + tenantId + "_docs", milvusIds)
-                log.info("待清理 Milvus 向量：版本ID={}，Milvus ID 数量={}",
-                        version.getId(), milvusIds.size());
+                embeddingService.deleteByMilvusIds(tenantId, milvusIds);
             }
 
             // ③-d 删除 doc_chunk 记录（第 3 步）

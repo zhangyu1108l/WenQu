@@ -1,11 +1,13 @@
 package com.kb.app.module.document.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.kb.app.context.TenantContext;
 import com.kb.app.module.document.entity.DocChunkDO;
 import com.kb.app.module.document.entity.DocumentVersionDO;
 import com.kb.app.module.document.mapper.DocChunkMapper;
 import com.kb.app.module.document.mapper.DocumentVersionMapper;
 import com.kb.app.module.document.service.DocumentVersionService;
+import com.kb.app.rag.embedding.EmbeddingService;
 import com.kb.app.util.MinioUtil;
 import com.kb.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
     private final DocumentVersionMapper documentVersionMapper;
     private final DocChunkMapper docChunkMapper;
     private final MinioUtil minioUtil;
+    private final EmbeddingService embeddingService;
 
     /** 每个文档最多保留的版本数量 */
     private static final int MAX_VERSION_COUNT = 5;
@@ -164,10 +167,11 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
                     .map(DocChunkDO::getMilvusId)
                     .collect(Collectors.toList());
 
-            // ④-c 调用 Milvus 批量删除向量（Step 5 实现，当前留 TODO）
+            // ④-c 调用 Milvus 批量删除向量
+            // 必须在删除 MySQL 记录前执行：doc_chunk 删除后 milvus_id 就找不到了，
+            // 对应向量会成为 Milvus 中无法追踪、无法清理的永久孤儿。
             if (!milvusIds.isEmpty()) {
-                // TODO: Step 5 实现 Milvus 向量删除，调用 MilvusUtil.deleteVectors(collectionName, milvusIds)
-                log.info("待清理 Milvus 向量：版本ID={}，Milvus ID 数量={}", oldVersion.getId(), milvusIds.size());
+                embeddingService.deleteByMilvusIds(TenantContext.getTenantId(), milvusIds);
             }
 
             // ④-d 删除 doc_chunk 记录
