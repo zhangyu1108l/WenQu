@@ -103,12 +103,12 @@ public class VectorRetrieverImpl implements VectorRetriever {
         SearchParam searchParam = buildSearchParam(collectionName, queryVectorList, topK, OUT_FIELDS);
         R<SearchResults> response = milvusServiceClient.search(searchParam);
         if (shouldRetryWithoutOptionalFields(response)) {
-            log.warn("Milvus Collection 缺少可选来源字段，降级使用基础 outFields 检索: collection={}", collectionName);
+            log.warn("Milvus 集合缺少可选来源字段，降级使用基础输出字段检索：集合={}", collectionName);
             response = milvusServiceClient.search(
                     buildSearchParam(collectionName, queryVectorList, topK, FALLBACK_OUT_FIELDS)
             );
         }
-        assertSuccess(response, "search vectors from " + collectionName);
+        assertSuccess(response, "在集合 " + collectionName + " 中检索向量");
 
         SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
         List<SearchResultsWrapper.IDScore> idScores = wrapper.getIDScore(0);
@@ -243,7 +243,7 @@ public class VectorRetrieverImpl implements VectorRetriever {
                     .eq(DocChunkDO::getMilvusId, milvusId)
                     .last("LIMIT 1"));
         } catch (Exception ex) {
-            log.warn("查询 doc_chunk 失败，将使用 Milvus outFields 构建检索结果: milvusId={}", milvusId, ex);
+            log.warn("查询 doc_chunk 失败，将使用 Milvus 输出字段构建检索结果：Milvus ID={}", milvusId, ex);
             return null;
         } finally {
             TenantContext.clear();
@@ -328,7 +328,7 @@ public class VectorRetrieverImpl implements VectorRetriever {
                 return idScore.get(fieldName);
             }
         } catch (Exception ex) {
-            log.debug("Milvus 检索结果字段解析失败: field={}", fieldName, ex);
+            log.debug("Milvus 检索结果字段解析失败：字段={}", fieldName, ex);
         }
         return null;
     }
@@ -393,10 +393,10 @@ public class VectorRetrieverImpl implements VectorRetriever {
 
     private void assertSuccess(R<?> response, String operation) {
         if (response == null) {
-            throw new IllegalStateException("Milvus " + operation + " failed: empty response");
+            throw new IllegalStateException("Milvus 操作失败：操作=" + operation + "，响应为空");
         }
         if (response.getStatus() != R.Status.Success.getCode()) {
-            throw new IllegalStateException("Milvus " + operation + " failed: " + response.getMessage());
+            throw new IllegalStateException("Milvus 操作失败：操作=" + operation + "，原因=" + response.getMessage());
         }
     }
 }

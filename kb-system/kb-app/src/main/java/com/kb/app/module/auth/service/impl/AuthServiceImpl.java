@@ -50,7 +50,7 @@ public class AuthServiceImpl implements AuthService {
      */
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    /** JWT 黑名单 Redis Key 前缀 */
+    /** JWT 黑名单 Redis 键前缀 */
     private static final String JWT_BLACKLIST_PREFIX = "jwt:blacklist:";
 
     /**
@@ -105,7 +105,7 @@ public class AuthServiceImpl implements AuthService {
                     user.getId(), tenant.getId(), user.getRole());
             String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
-            log.info("用户注册成功: tenantId={}, username={}, userId={}",
+            log.info("用户注册成功：租户ID={}，用户名={}，用户ID={}",
                     tenant.getId(), user.getUsername(), user.getId());
 
             return LoginResponse.builder()
@@ -173,7 +173,7 @@ public class AuthServiceImpl implements AuthService {
                     user.getId(), tenant.getId(), user.getRole());
             String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
-            log.info("用户登录成功: tenantId={}, username={}, userId={}",
+            log.info("用户登录成功：租户ID={}，用户名={}，用户ID={}",
                     tenant.getId(), user.getUsername(), user.getId());
 
             return LoginResponse.builder()
@@ -213,7 +213,7 @@ public class AuthServiceImpl implements AuthService {
             // ② 将 token 存入 Redis 黑名单，TTL = 剩余有效秒数
             // token 自然过期后，黑名单记录也会被 Redis 自动删除
             redisUtil.set(JWT_BLACKLIST_PREFIX + accessToken, "1", remainingSeconds);
-            log.info("用户登出，token 已加入黑名单，剩余有效期: {}秒", remainingSeconds);
+            log.info("用户登出，令牌已加入黑名单，剩余有效期：{}秒", remainingSeconds);
         }
         // 如果 token 已过期（remainingSeconds <= 0），无需加入黑名单，本身就无效了
     }
@@ -235,7 +235,7 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse refresh(String refreshToken) {
         // ① 解析 refreshToken，验证未过期
         if (jwtUtil.isExpired(refreshToken)) {
-            throw BusinessException.of(1006, "refreshToken 已过期，请重新登录");
+            throw BusinessException.of(1006, "刷新令牌已过期，请重新登录");
         }
 
         // ② 从 refreshToken 中提取 userId
@@ -256,7 +256,7 @@ public class AuthServiceImpl implements AuthService {
         String newAccessToken = jwtUtil.generateAccessToken(
                 user.getId(), user.getTenantId(), user.getRole());
 
-        log.info("Token 刷新成功: userId={}, tenantId={}", userId, user.getTenantId());
+        log.info("令牌刷新成功：用户ID={}，租户ID={}", userId, user.getTenantId());
 
         return LoginResponse.builder()
                 .accessToken(newAccessToken)

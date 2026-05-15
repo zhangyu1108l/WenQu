@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {
-        log.warn("业务异常: code={}, msg={}", e.getCode(), e.getMessage());
+        log.warn("业务异常：错误码={}，消息={}", e.getCode(), e.getMessage());
         return Result.fail(e.getCode(), e.getMessage());
     }
 
@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
         String errorMsg = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
-        log.warn("参数校验失败: {}", errorMsg);
+        log.warn("参数校验失败：{}", errorMsg);
         return Result.fail(400, errorMsg);
     }
 

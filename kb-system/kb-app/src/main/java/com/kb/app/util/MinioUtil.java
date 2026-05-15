@@ -55,11 +55,11 @@ public class MinioUtil {
                     BucketExistsArgs.builder().bucket(bucketName).build());
             if (!exists) {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-                log.info("Bucket 创建成功: {}", bucketName);
+                log.info("存储桶创建成功：{}", bucketName);
             }
         } catch (MinioException | InvalidKeyException | NoSuchAlgorithmException | IOException e) {
-            log.error("创建 Bucket 失败: bucketName={}, error={}", bucketName, e.getMessage());
-            throw new RuntimeException("创建 Bucket 失败: " + bucketName, e);
+            log.error("创建存储桶失败：存储桶名称={}，错误={}", bucketName, e.getMessage());
+            throw new RuntimeException("创建存储桶失败：" + bucketName, e);
         }
     }
 
@@ -88,13 +88,13 @@ public class MinioUtil {
                             .contentType(contentType)
                             .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
                             .build());
-            log.info("文件上传成功: bucketName={}, objectKey={}, size={} bytes",
+            log.info("文件上传成功：存储桶名称={}，对象路径={}，大小={} 字节",
                     bucketName, objectKey, bytes.length);
             return objectKey;
         } catch (MinioException | InvalidKeyException | NoSuchAlgorithmException | IOException e) {
-            log.error("文件上传失败: bucketName={}, objectKey={}, error={}",
+            log.error("文件上传失败：存储桶名称={}，对象路径={}，错误={}",
                     bucketName, objectKey, e.getMessage());
-            throw new RuntimeException("文件上传失败: " + objectKey, e);
+            throw new RuntimeException("文件上传失败：" + objectKey, e);
         }
     }
 
@@ -115,13 +115,13 @@ public class MinioUtil {
                         .object(objectKey)
                         .build())) {
             byte[] bytes = stream.readAllBytes();
-            log.info("文件下载成功: bucketName={}, objectKey={}, size={} bytes",
+            log.info("文件下载成功：存储桶名称={}，对象路径={}，大小={} 字节",
                     bucketName, objectKey, bytes.length);
             return bytes;
         } catch (MinioException | InvalidKeyException | NoSuchAlgorithmException | IOException e) {
-            log.error("文件下载失败: bucketName={}, objectKey={}, error={}",
+            log.error("文件下载失败：存储桶名称={}，对象路径={}，错误={}",
                     bucketName, objectKey, e.getMessage());
-            throw new RuntimeException("文件下载失败: " + objectKey, e);
+            throw new RuntimeException("文件下载失败：" + objectKey, e);
         }
     }
 
@@ -152,13 +152,13 @@ public class MinioUtil {
                             .object(objectKey)
                             .expiry(minutes, TimeUnit.MINUTES)
                             .build());
-            log.debug("预签名 URL 生成成功: bucketName={}, objectKey={}, expireMinutes={}",
+            log.debug("预签名地址生成成功：存储桶名称={}，对象路径={}，有效分钟数={}",
                     bucketName, objectKey, minutes);
             return url;
         } catch (MinioException | InvalidKeyException | NoSuchAlgorithmException | IOException e) {
-            log.error("预签名 URL 生成失败: bucketName={}, objectKey={}, error={}",
+            log.error("预签名地址生成失败：存储桶名称={}，对象路径={}，错误={}",
                     bucketName, objectKey, e.getMessage());
-            throw new RuntimeException("预签名 URL 生成失败: " + objectKey, e);
+            throw new RuntimeException("预签名地址生成失败：" + objectKey, e);
         }
     }
 
@@ -181,11 +181,11 @@ public class MinioUtil {
                             .bucket(bucketName)
                             .object(objectKey)
                             .build());
-            log.info("文件删除成功: bucketName={}, objectKey={}", bucketName, objectKey);
+            log.info("文件删除成功：存储桶名称={}，对象路径={}", bucketName, objectKey);
         } catch (MinioException | InvalidKeyException | NoSuchAlgorithmException | IOException e) {
-            log.error("文件删除失败: bucketName={}, objectKey={}, error={}",
+            log.error("文件删除失败：存储桶名称={}，对象路径={}，错误={}",
                     bucketName, objectKey, e.getMessage());
-            throw new RuntimeException("文件删除失败: " + objectKey, e);
+            throw new RuntimeException("文件删除失败：" + objectKey, e);
         }
     }
 
@@ -210,9 +210,9 @@ public class MinioUtil {
             // MinIO 返回 404 NoSuchKey，表示文件不存在，属于正常场景
             return false;
         } catch (MinioException | InvalidKeyException | NoSuchAlgorithmException | IOException e) {
-            log.error("检查文件存在性失败: bucketName={}, objectKey={}, error={}",
+            log.error("检查文件存在性失败：存储桶名称={}，对象路径={}，错误={}",
                     bucketName, objectKey, e.getMessage());
-            throw new RuntimeException("检查文件存在性失败: " + objectKey, e);
+            throw new RuntimeException("检查文件存在性失败：" + objectKey, e);
         }
     }
 }

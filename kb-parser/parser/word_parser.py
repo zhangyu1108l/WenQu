@@ -1,8 +1,7 @@
 """
-Word document parser for Step 4-C.
+Step 4-C 的 Word 文档解析器。
 
-Word parsing can read exact paragraph styles, so heading hierarchy is more
-reliable than PDF heuristic heading detection.
+Word 解析可以直接读取段落样式，因此标题层级识别比 PDF 的启发式检测更可靠。
 """
 
 import logging
@@ -21,31 +20,31 @@ logger = logging.getLogger(__name__)
 
 class WordParser:
     """
-    Word document parser.
+    Word 文档解析器。
 
-    The core advantage of Word parsing is that .docx keeps structured styles,
-    especially Heading 1/2/3. This lets us build an accurate heading path for
-    later source citation and chunk metadata.
+    Word 解析的核心优势是 .docx 保留了结构化样式，
+    尤其是 Heading 1/2/3 这类标题样式。借助这些样式，
+    可以为后续来源引用和 chunk 元数据构建准确的标题路径。
     """
 
     def parse(self, file_bytes: bytes) -> dict:
         """
-        Parse a Word document and extract structured text blocks plus tables.
+        解析 Word 文档，提取结构化文本块和表格。
 
-        Args:
-            file_bytes: Raw .docx bytes.
+        参数:
+            file_bytes: 原始 .docx 文件字节数据。
 
-        Returns:
-            dict: Contains text_blocks and tables.
+        返回:
+            dict: 包含 text_blocks 和 tables。
         """
-        logger.info("Start parsing Word document, size=%d bytes", len(file_bytes))
+        logger.info("开始解析 Word 文档，大小=%d 字节", len(file_bytes))
 
         doc = Document(BytesIO(file_bytes))
         text_blocks = self._extract_text_blocks(doc)
         tables = self._extract_tables(doc)
 
         logger.info(
-            "Word parsing completed: text_blocks=%d, tables=%d",
+            "Word 解析完成：文本块数量=%d，表格数量=%d",
             len(text_blocks),
             len(tables),
         )
@@ -57,18 +56,17 @@ class WordParser:
 
     def _extract_text_blocks(self, doc: DocumentObject) -> List[dict]:
         """
-        Extract text blocks and preserve heading hierarchy.
+        提取文本块，并保留标题层级。
 
-        Heading style names must support both English and Chinese Word:
-        English Word uses "Heading 1/2/3", while Chinese Word uses
-        "标题 1/2/3".
+        标题样式名称需要同时兼容英文版和中文版 Word：
+        英文版 Word 使用 "Heading 1/2/3"，中文版 Word 使用 "标题 1/2/3"。
 
-        heading_stack keeps the current heading path. When a new heading is
-        encountered, all deeper or same-level headings are replaced:
+        heading_stack 用来保存当前标题路径。遇到新标题时，
+        会替换掉同级或更深层级的旧标题：
         H1 "第5章" -> stack=["第5章"]
         H2 "5.3节" -> stack=["第5章", "5.3节"]
-        new H1 "第6章" -> stack=["第6章"] because H1 resets all lower levels.
-        This stack maintenance is the core of heading path construction.
+        新 H1 "第6章" -> stack=["第6章"]，因为 H1 会重置所有下级标题。
+        维护这个栈，是构建 heading_path 的核心逻辑。
         """
         text_blocks: List[dict] = []
         heading_stack: List[str] = []
@@ -94,16 +92,15 @@ class WordParser:
                 "char_count": len(text),
             })
 
-        logger.info("Word text extraction completed: %d text blocks", len(text_blocks))
+        logger.info("Word 文本提取完成：文本块数量=%d", len(text_blocks))
         return text_blocks
 
     def _build_heading_path(self, heading_stack: list) -> Optional[str]:
         """
-        Build heading path from the current heading stack.
+        根据当前标题栈构建标题路径。
 
-        The ">" separator follows the architecture doc example and is used by
-        the frontend for readable source display. The result is stored later in
-        doc_chunk.heading_path.
+        ">" 分隔符遵循架构文档中的示例，前端会用它展示可读的来源路径。
+        构建结果后续会存入 doc_chunk.heading_path。
         """
         if not heading_stack:
             return None
@@ -111,11 +108,10 @@ class WordParser:
 
     def _extract_tables(self, doc: DocumentObject) -> List[dict]:
         """
-        Extract Word tables and convert them to Markdown.
+        提取 Word 表格，并转换为 Markdown。
 
-        Word documents do not have a stable page_no concept like PDF files, so
-        page_no is always None. Tables are attached to the nearest preceding
-        heading path to provide context for retrieval and source citation.
+        Word 文档不像 PDF 那样有稳定的 page_no 概念，所以 page_no 固定为 None。
+        表格会挂到最近的前置标题路径下，为检索和来源引用提供上下文。
         """
         tables: List[dict] = []
         heading_stack: List[str] = []
@@ -152,7 +148,7 @@ class WordParser:
                     "heading_path": self._build_heading_path(heading_stack),
                 })
 
-        logger.info("Word table extraction completed: %d tables", len(tables))
+        logger.info("Word 表格提取完成：表格数量=%d", len(tables))
         return tables
 
     @staticmethod

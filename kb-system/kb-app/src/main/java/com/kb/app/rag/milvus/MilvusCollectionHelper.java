@@ -61,7 +61,7 @@ public class MilvusCollectionHelper {
      */
     public String getCollectionName(Long tenantId) {
         if (tenantId == null) {
-            throw new IllegalArgumentException("tenantId must not be null");
+            throw new IllegalArgumentException("租户ID不能为空");
         }
         return milvusProperties.getCollectionPrefix() + tenantId + COLLECTION_SUFFIX;
     }
@@ -147,7 +147,7 @@ public class MilvusCollectionHelper {
                 .withSchema(schema)
                 .build();
         assertSuccess(milvusServiceClient.createCollection(createCollectionParam),
-                "create Milvus collection " + collectionName);
+                "创建 Milvus 集合 " + collectionName);
 
         CreateIndexParam createIndexParam = CreateIndexParam.newBuilder()
                 .withCollectionName(collectionName)
@@ -158,7 +158,7 @@ public class MilvusCollectionHelper {
                 .withExtraParam("{\"nlist\":128}")
                 .build();
         assertSuccess(milvusServiceClient.createIndex(createIndexParam),
-                "create Milvus embedding index for " + collectionName);
+                "为 Milvus 集合 " + collectionName + " 创建向量索引");
     }
 
     /**
@@ -179,7 +179,7 @@ public class MilvusCollectionHelper {
                 .withCollectionName(collectionName)
                 .build();
         assertSuccess(milvusServiceClient.dropCollection(dropCollectionParam),
-                "drop Milvus collection " + collectionName);
+                "删除 Milvus 集合 " + collectionName);
     }
 
     private boolean hasCollection(String collectionName) {
@@ -187,16 +187,16 @@ public class MilvusCollectionHelper {
                 .withCollectionName(collectionName)
                 .build();
         R<Boolean> response = milvusServiceClient.hasCollection(hasCollectionParam);
-        assertSuccess(response, "check Milvus collection " + collectionName);
+        assertSuccess(response, "检查 Milvus 集合 " + collectionName);
         return Boolean.TRUE.equals(response.getData());
     }
 
     private void assertSuccess(R<?> response, String operation) {
         if (response == null) {
-            throw new IllegalStateException("Milvus " + operation + " failed: empty response");
+            throw new IllegalStateException("Milvus 操作失败：操作=" + operation + "，响应为空");
         }
         if (response.getStatus() != R.Status.Success.getCode()) {
-            throw new IllegalStateException("Milvus " + operation + " failed: " + response.getMessage());
+            throw new IllegalStateException("Milvus 操作失败：操作=" + operation + "，原因=" + response.getMessage());
         }
     }
 }

@@ -56,7 +56,7 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                 .progress(0)
                 .build();
         asyncTaskMapper.insert(task);
-        log.info("异步任务已创建: taskId={}, taskType={}, bizId={}, tenantId={}",
+        log.info("异步任务已创建：任务ID={}，任务类型={}，业务ID={}，租户ID={}",
                 task.getId(), taskType, bizId, tenantId);
         return task;
     }
@@ -77,7 +77,7 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                         .eq(AsyncTaskDO::getId, taskId)
                         .set(AsyncTaskDO::getStatus, TaskStatus.RUNNING.name())
                         .set(AsyncTaskDO::getProgress, progress));
-        log.info("任务状态更新: taskId={}, status=RUNNING, progress={}", taskId, progress);
+        log.info("任务状态更新：任务ID={}，状态=运行中，进度={}", taskId, progress);
     }
 
     /**
@@ -92,7 +92,7 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                 new LambdaUpdateWrapper<AsyncTaskDO>()
                         .eq(AsyncTaskDO::getId, taskId)
                         .set(AsyncTaskDO::getProgress, progress));
-        log.info("任务进度更新: taskId={}, progress={}", taskId, progress);
+        log.info("任务进度更新：任务ID={}，进度={}", taskId, progress);
     }
 
     /**
@@ -109,7 +109,7 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                         .eq(AsyncTaskDO::getId, taskId)
                         .set(AsyncTaskDO::getStatus, TaskStatus.DONE.name())
                         .set(AsyncTaskDO::getProgress, 100));
-        log.info("任务已完成: taskId={}", taskId);
+        log.info("任务已完成：任务ID={}", taskId);
     }
 
     /**
@@ -132,6 +132,6 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                         .eq(AsyncTaskDO::getId, taskId)
                         .set(AsyncTaskDO::getStatus, TaskStatus.FAILED.name())
                         .set(AsyncTaskDO::getErrorMsg, truncatedMsg));
-        log.error("任务失败: taskId={}, errorMsg={}", taskId, truncatedMsg);
+        log.error("任务失败：任务ID={}，错误信息={}", taskId, truncatedMsg);
     }
 }

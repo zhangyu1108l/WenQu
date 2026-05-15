@@ -1,17 +1,17 @@
 """
-Smart document chunker for Step 4-D.
+Step 4-D 的智能文档分块器。
 
-Three-level fallback decision flow:
+三级降级决策流程：
 
-    Has headings? -> yes -> chunk by heading
+    有标题？ -> 是 -> 按标题分块
           |
-          no
-          v
-    Has paragraphs? -> yes -> chunk by paragraph
+          否
+          ↓
+    有段落？ -> 是 -> 按段落分块
           |
-          no
-          v
-    Length fallback
+          否
+          ↓
+    长度兜底
 """
 
 from typing import List, Optional
@@ -23,21 +23,19 @@ from models.schema import ChunkModel
 #   有标题？ -> 是 -> 标题分块
 #       |
 #       否
-#       v
+#       ↓
 #   有段落？ -> 是 -> 段落分块
 #       |
 #       否
-#       v
+#       ↓
 #   长度兜底
 class SmartChunker:
     """
-    Smart chunker with a three-level fallback strategy.
+    采用三级降级策略的智能分块器。
 
-    The strategy prefers semantic boundaries first, then falls back to weaker
-    structure only when stronger structure is unavailable:
-    heading chunks preserve the most complete document semantics; paragraph
-    chunks are the next best unit; length chunks make unstructured text safe to
-    index and retrieve.
+    该策略优先使用语义边界；只有更强的结构不可用时，才降级到较弱结构：
+    标题分块可以保留最完整的文档语义；段落分块是次优的自然阅读单元；
+    长度分块则用于保证无结构文本也能被安全地索引和检索。
     """
 
     TOKEN_TO_CHARS = 1.5
@@ -49,19 +47,17 @@ class SmartChunker:
         min_chunk_chars: int = 50,
     ) -> None:
         """
-        Initialize chunking parameters.
+        初始化分块参数。
 
-        Args:
-            max_tokens: Approximate maximum token count for a single chunk.
-            overlap_tokens: Approximate overlapping token count for length
-                fallback chunks.
-            min_chunk_chars: Minimum character count retained after chunking.
+        参数:
+            max_tokens: 单个 chunk 的近似最大 token 数。
+            overlap_tokens: 长度兜底分块时，相邻 chunk 的近似重叠 token 数。
+            min_chunk_chars: 分块后保留 chunk 的最小字符数。
 
-        Notes:
-            Token count is approximated with character count because accurate
-            token calculation requires a tokenizer dependency. For Chinese
-            documents, the approximation of 1 token ~= 1.5 Chinese characters
-            is good enough for chunk sizing and keeps this parser lightweight.
+        说明:
+            这里用字符数近似 token 数，因为精确计算 token 需要额外的 tokenizer 依赖。
+            对中文文档来说，1 token 约等于 1.5 个中文字符的估算已经足够用于控制
+            chunk 大小，同时可以让解析侧车保持轻量。
         """
         self.max_tokens = max_tokens
         self.overlap_tokens = overlap_tokens
@@ -74,24 +70,21 @@ class SmartChunker:
         file_type: str,
     ) -> List[ChunkModel]:
         """
-        Chunk parsed text blocks and tables into ChunkModel objects.
+        将解析出的文本块和表格分块为 ChunkModel 对象。
 
-        Args:
-            text_blocks: Structured text blocks from PDF or Word parsers.
-            tables: Structured table blocks from PDF or Word parsers.
-            file_type: Source file type, such as "pdf" or "docx".
+        参数:
+            text_blocks: PDF 或 Word 解析器产出的结构化文本块。
+            tables: PDF 或 Word 解析器产出的结构化表格块。
+            file_type: 源文件类型，例如 "pdf" 或 "docx"。
 
-        Returns:
-            List[ChunkModel]: Ordered chunk list with chunk_index reset from 0.
+        返回:
+            List[ChunkModel]: 有序 chunk 列表，chunk_index 会从 0 重新编号。
 
-        Notes:
-            The fallback priority is heading -> paragraph -> length. Heading
-            chunks preserve the richest semantic structure; paragraphs are a
-            natural reading unit when headings are unavailable; length fallback
-            protects retrieval quality for plain text without visible structure.
-            Tables are always merged afterward as whole chunks, because a table
-            is an independent semantic unit and should not participate in text
-            fallback decisions.
+        说明:
+            降级优先级为：标题 -> 段落 -> 长度。标题分块保留最丰富的语义结构；
+            没有标题时，段落是自然的阅读单元；对于没有明显结构的纯文本，
+            长度兜底可以保护检索质量。表格始终在文本分块后作为完整 chunk 合并，
+            因为表格是独立语义单元，不参与文本降级策略判断。
         """
         normalized_file_type = (file_type or "").strip().lower()
 
@@ -135,17 +128,17 @@ class SmartChunker:
 
     def _has_heading_structure(self, text_blocks: List[dict]) -> bool:
         """
-        Determine whether the document has a usable heading structure.
+        判断文档是否存在可用的标题结构。
 
-        Args:
-            text_blocks: Parsed text blocks.
+        参数:
+            text_blocks: 已解析的文本块。
 
-        Returns:
-            bool: True when at least two heading-like blocks are present.
+        返回:
+            bool: 当至少存在两个类似标题的文本块时返回 True。
 
-        Notes:
-            The threshold is 2 because a single heading may only be the document
-            title. At least two headings are needed to indicate real structure.
+        说明:
+            阈值设为 2，是因为单个标题可能只是文档标题。
+            至少两个标题才能说明文档有真实的层级结构。
         """
         heading_count = sum(1 for block in text_blocks if self._is_heading(block))
         return heading_count >= 2
@@ -156,19 +149,17 @@ class SmartChunker:
         file_type: str = "",
     ) -> bool:
         """
-        Determine whether the document has paragraph separators.
+        判断文档是否存在段落分隔结构。
 
-        Args:
-            text_blocks: Parsed text blocks.
+        参数:
+            text_blocks: 已解析的文本块。
 
-        Returns:
-            bool: True when paragraph boundaries are available.
+        返回:
+            bool: 当存在段落边界时返回 True。
 
-        Notes:
-            A double newline is a common paragraph separator in extracted text,
-            so its presence indicates paragraph-level structure. Word parsing
-            already emits one block per paragraph, so multiple Word text blocks
-            are also treated as paragraph structure.
+        说明:
+            双换行是抽取文本中常见的段落分隔符，因此出现双换行通常表示存在段落结构。
+            Word 解析本身已经按段落产出文本块，所以多个 Word 文本块也会被视为段落结构。
         """
         text = self._join_block_texts(text_blocks, separator="\n")
         if "\n\n" in text:
@@ -180,19 +171,18 @@ class SmartChunker:
 
     def _chunk_by_heading(self, text_blocks: List[dict]) -> List[ChunkModel]:
         """
-        Chunk text by heading boundaries.
+        按标题边界对文本进行分块。
 
-        Args:
-            text_blocks: Parsed text blocks with heading metadata.
+        参数:
+            text_blocks: 带有标题元数据的已解析文本块。
 
-        Returns:
-            List[ChunkModel]: Chunks whose boundaries start at headings.
+        返回:
+            List[ChunkModel]: 以标题作为起点边界的 chunk 列表。
 
-        Notes:
-            The heading text itself is included in chunk content; otherwise the
-            chunk would lose its most important local context. Very long heading
-            chunks are recursively split by length because some sections contain
-            much more text than the embedding/indexing target size.
+        说明:
+            标题文本本身会被放入 chunk 内容，否则 chunk 会丢失最重要的局部上下文。
+            如果某个标题段落下的内容太长，会继续按长度递归拆分，
+            因为有些章节内容会明显超过向量化和索引的目标大小。
         """
         chunks: List[ChunkModel] = []
         current_texts: List[str] = []
@@ -231,18 +221,18 @@ class SmartChunker:
 
     def _chunk_by_paragraph(self, text_blocks: List[dict]) -> List[ChunkModel]:
         """
-        Chunk text by paragraph separators.
+        按段落分隔符对文本进行分块。
 
-        Args:
-            text_blocks: Parsed text blocks.
+        参数:
+            text_blocks: 已解析的文本块。
 
-        Returns:
-            List[ChunkModel]: Paragraph-based chunks.
+        返回:
+            List[ChunkModel]: 基于段落生成的 chunk 列表。
 
-        Notes:
-            Short paragraphs are merged with the next paragraph to avoid
-            fragmented chunks, which often hurts retrieval quality because tiny
-            chunks lack enough context to match user questions well.
+        说明:
+            短段落会和后一个段落合并，以避免产生过碎的 chunk。
+            过小的 chunk 往往缺少足够上下文，难以和用户问题形成良好匹配，
+            从而影响检索质量。
         """
         text = self._join_block_texts(text_blocks, separator="\n\n")
         paragraphs = [
@@ -294,23 +284,22 @@ class SmartChunker:
         page_no: int = None,
     ) -> List[ChunkModel]:
         """
-        Chunk text by length using a sliding window.
+        使用滑动窗口按长度对文本进行分块。
 
-        Args:
-            text: Raw text to split.
-            heading_path: Optional heading path copied to generated chunks.
-            page_no: Optional page number copied to generated chunks.
+        参数:
+            text: 待切分的原始文本。
+            heading_path: 可选标题路径，会复制到生成的 chunk 中。
+            page_no: 可选页码，会复制到生成的 chunk 中。
 
-        Returns:
-            List[ChunkModel]: Length-based chunks.
+        返回:
+            List[ChunkModel]: 基于长度生成的 chunk 列表。
 
-        Notes:
-            max_chars = max_tokens * 1.5 and overlap_chars = overlap_tokens *
-            1.5, using the approximate rule 1 token ~= 1.5 Chinese characters.
-            Overlap keeps boundary context: for example, with max_chars=100 and
-            overlap_chars=15, chunk 1 covers [0:100] and chunk 2 starts at 85,
-            so a sentence split near character 95 still appears with context in
-            the next chunk.
+        说明:
+            max_chars = max_tokens * 1.5，overlap_chars = overlap_tokens * 1.5，
+            使用的是 1 token 约等于 1.5 个中文字符的估算规则。
+            重叠窗口用于保留边界上下文：例如 max_chars=100、overlap_chars=15 时，
+            chunk 1 覆盖 [0:100]，chunk 2 从 85 开始，
+            因此在第 95 个字符附近被切开的句子，仍会带着上下文出现在下一个 chunk 中。
         """
         clean_text = (text or "").strip()
         if not clean_text:
@@ -343,18 +332,18 @@ class SmartChunker:
 
     def _table_to_chunk(self, table: dict, chunk_index: int) -> ChunkModel:
         """
-        Convert a parsed table to a single ChunkModel.
+        将已解析的表格转换为单个 ChunkModel。
 
-        Args:
-            table: Parsed table dict containing markdown_text and metadata.
-            chunk_index: Temporary index before final ordering.
+        参数:
+            table: 已解析的表格字典，包含 markdown_text 和元数据。
+            chunk_index: 最终排序前使用的临时索引。
 
-        Returns:
-            ChunkModel: Table chunk.
+        返回:
+            ChunkModel: 表格 chunk。
 
-        Notes:
-            The whole table is kept as one chunk and is not split, because row
-            or cell splitting can destroy the table's semantic relationships.
+        说明:
+            整张表格会作为一个 chunk 保留，不会继续拆分，
+            因为按行或单元格拆分可能破坏表格内部的语义关系。
         """
         content = str(table.get("markdown_text") or "").strip()
         return self._make_chunk(
@@ -373,16 +362,16 @@ class SmartChunker:
         chunk_index: int,
     ) -> List[ChunkModel]:
         """
-        Build one or more heading chunks from accumulated text.
+        根据已累积的文本构建一个或多个标题 chunk。
 
-        Args:
-            texts: Accumulated block texts.
-            heading_path: Heading path for the accumulated section.
-            page_no: Starting page number for the section.
-            chunk_index: Temporary index before final ordering.
+        参数:
+            texts: 已累积的文本块内容。
+            heading_path: 当前累积章节的标题路径。
+            page_no: 当前章节的起始页码。
+            chunk_index: 最终排序前使用的临时索引。
 
-        Returns:
-            List[ChunkModel]: One heading chunk or length-split child chunks.
+        返回:
+            List[ChunkModel]: 一个标题 chunk，或按长度拆出的多个子 chunk。
         """
         content = "\n".join(text for text in texts if text).strip()
         if not content:
@@ -406,14 +395,14 @@ class SmartChunker:
         start_index: int,
     ) -> List[ChunkModel]:
         """
-        Rebuild chunks with contiguous temporary indexes.
+        使用连续的临时索引重建 chunk 列表。
 
-        Args:
-            chunks: Chunks to reindex.
-            start_index: First index assigned to the rebuilt list.
+        参数:
+            chunks: 需要重新编号的 chunk。
+            start_index: 重建后列表分配的第一个索引。
 
-        Returns:
-            List[ChunkModel]: Chunks with indexes starting at start_index.
+        返回:
+            List[ChunkModel]: 索引从 start_index 开始的 chunk 列表。
         """
         return [
             self._make_chunk(
@@ -435,17 +424,17 @@ class SmartChunker:
         page_no: Optional[int] = None,
     ) -> ChunkModel:
         """
-        Create a ChunkModel with consistent char_count calculation.
+        创建 ChunkModel，并统一计算 char_count。
 
-        Args:
-            content: Chunk text.
-            chunk_index: Chunk order index.
-            chunk_type: Chunking strategy type.
-            heading_path: Optional heading path metadata.
-            page_no: Optional source page number.
+        参数:
+            content: chunk 文本内容。
+            chunk_index: chunk 顺序索引。
+            chunk_type: 分块策略类型。
+            heading_path: 可选标题路径元数据。
+            page_no: 可选来源页码。
 
-        Returns:
-            ChunkModel: Validated chunk data model.
+        返回:
+            ChunkModel: 通过校验的 chunk 数据模型。
         """
         clean_content = (content or "").strip()
         return ChunkModel(
@@ -459,58 +448,58 @@ class SmartChunker:
 
     def _max_chars(self) -> int:
         """
-        Return the maximum character count derived from max_tokens.
+        返回由 max_tokens 换算出的最大字符数。
 
-        Returns:
-            int: Approximate maximum characters per chunk.
+        返回:
+            int: 每个 chunk 的近似最大字符数。
         """
         return max(1, int(self.max_tokens * self.TOKEN_TO_CHARS))
 
     def _overlap_chars(self) -> int:
         """
-        Return the overlap character count derived from overlap_tokens.
+        返回由 overlap_tokens 换算出的重叠字符数。
 
-        Returns:
-            int: Approximate overlapping characters for sliding windows.
+        返回:
+            int: 滑动窗口使用的近似重叠字符数。
         """
         return max(0, int(self.overlap_tokens * self.TOKEN_TO_CHARS))
 
     @staticmethod
     def _get_text(block: dict) -> str:
         """
-        Read and normalize text from a parser text block.
+        从解析器文本块中读取并规范化文本。
 
-        Args:
-            block: Parsed text block.
+        参数:
+            block: 已解析的文本块。
 
-        Returns:
-            str: Stripped block text.
+        返回:
+            str: 去除首尾空白后的文本块内容。
         """
         return str(block.get("text") or "").strip()
 
     @staticmethod
     def _is_heading(block: dict) -> bool:
         """
-        Read heading status from Word or PDF parser metadata.
+        从 Word 或 PDF 解析器元数据中读取标题状态。
 
-        Args:
-            block: Parsed text block.
+        参数:
+            block: 已解析的文本块。
 
-        Returns:
-            bool: True when the block is marked as a heading.
+        返回:
+            bool: 当该文本块被标记为标题时返回 True。
         """
         return bool(block.get("is_heading") or block.get("is_possible_heading"))
 
     def _join_block_texts(self, text_blocks: List[dict], separator: str) -> str:
         """
-        Join non-empty text block contents with the given separator.
+        使用指定分隔符拼接非空文本块内容。
 
-        Args:
-            text_blocks: Parsed text blocks.
-            separator: Separator inserted between block texts.
+        参数:
+            text_blocks: 已解析的文本块。
+            separator: 插入到文本块之间的分隔符。
 
-        Returns:
-            str: Joined text.
+        返回:
+            str: 拼接后的文本。
         """
         return separator.join(
             text

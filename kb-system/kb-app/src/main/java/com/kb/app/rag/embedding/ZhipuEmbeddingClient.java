@@ -83,14 +83,14 @@ public class ZhipuEmbeddingClient {
                 Integer index = embedding.getIndex();
                 int batchIndex = index == null ? i : index;
                 if (batchIndex < 0 || batchIndex >= batchTexts.size()) {
-                    throw new IllegalStateException("Embedding response index out of range: " + batchIndex);
+                    throw new IllegalStateException("向量化响应索引越界：" + batchIndex);
                 }
                 batchVectors.set(batchIndex, embedding.getOutput());
             }
 
             for (float[] vector : batchVectors) {
                 if (vector == null) {
-                    throw new IllegalStateException("Embedding response missing vector for batch item");
+                    throw new IllegalStateException("向量化响应缺少批次项对应的向量");
                 }
                 vectors.add(vector);
             }

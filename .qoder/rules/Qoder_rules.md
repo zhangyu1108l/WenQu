@@ -1,7 +1,7 @@
 ---
 trigger: always_on
 ---
-# Qoder Project Rules — 企业智能知识库问答系统
+# Qoder 项目规则 — 企业智能知识库问答系统
 
 ## 0. 首要原则（最高优先级）
 
@@ -196,7 +196,7 @@ GET    /api/eval/batches/{id}
 
 ## 5. 代码风格规范
 
-### Java
+### Java 规范
 ```java
 // 包名结构（严格遵守）
 com.kb.gateway.filter.*
@@ -232,23 +232,23 @@ com.kb.app.rag.*
 - 异步方法（@Async）不加 @Transactional（事务在异步线程中无效）
 ```
 
-### Python
+### Python 规范
 ```python
 # 文件命名：snake_case
 # 函数命名：snake_case
 # 类命名：PascalCase
-# 每个函数必须有类型注解和 docstring
+# 每个函数必须有类型注解和文档字符串
 # FastAPI 路由函数必须写 response_model
 
 # 禁止裸 except，必须捕获具体异常
 # 日志用 logging 模块，不用 print
 ```
 
-### Vue3
+### Vue3 规范
 ```javascript
-// 全部使用 <script setup> 语法，禁止 Options API
+// 全部使用 <script setup> 语法，禁止选项式 API
 // 组件命名：PascalCase（如 ChatWindow.vue）
-// Composable 命名：use 前缀（如 useChat.js）
+// 组合式函数命名：use 前缀（如 useChat.js）
 // API 调用统一走 src/api/ 目录封装，禁止在组件内直接写 axios
 // 环境变量用 import.meta.env.VITE_*，不用 process.env
 ```

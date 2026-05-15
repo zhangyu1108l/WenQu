@@ -103,7 +103,7 @@ public class DocUploadServiceImpl implements DocUploadService {
         if (existingDoc != null) {
             // 同名文档已存在，使用已有的 documentId（后续创建新版本）
             doc = existingDoc;
-            log.info("检测到同名文档，将创建新版本: docId={}, title={}", doc.getId(), title);
+            log.info("检测到同名文档，将创建新版本：文档ID={}，标题={}", doc.getId(), title);
         } else {
             // 不存在同名文档，插入新 document 记录
             doc = DocumentDO.builder()
@@ -114,7 +114,7 @@ public class DocUploadServiceImpl implements DocUploadService {
                     .status(DocStatus.PENDING.name())
                     .build();
             documentMapper.insert(doc);
-            log.info("新文档记录已创建: docId={}, title={}, fileType={}", doc.getId(), title, extension);
+            log.info("新文档记录已创建：文档ID={}，标题={}，文件类型={}", doc.getId(), title, extension);
         }
 
         // ③ 创建 async_task 记录（task_type=DOC_PROCESS，biz_id=documentId）
@@ -130,7 +130,7 @@ public class DocUploadServiceImpl implements DocUploadService {
         try {
             fileBytes = file.getBytes();
         } catch (IOException e) {
-            log.error("读取文件字节失败: filename={}, error={}", originalFilename, e.getMessage());
+            log.error("读取文件字节失败：文件名={}，错误={}", originalFilename, e.getMessage());
             asyncTaskService.fail(task.getId(), "读取上传文件失败: " + e.getMessage());
             throw BusinessException.of(3003, "读取上传文件失败");
         }
@@ -204,7 +204,7 @@ public class DocUploadServiceImpl implements DocUploadService {
             // ⑤ 调用 Python 解析侧车获取 chunk 列表
             List<ChunkDTO> chunks = parserClient.parse(fileBytes, doc.getFileType());
             asyncTaskService.running(taskId, 60);
-            log.info("文档解析完成: docId={}, chunkCount={}", doc.getId(), chunks.size());
+            log.info("文档解析完成：文档ID={}，分块数量={}", doc.getId(), chunks.size());
 
             // ⑥ 更新 document.status = EMBEDDING
             // 作用：前端轮询时可根据文档状态展示当前处理阶段（"向量化中"）
@@ -224,14 +224,14 @@ public class DocUploadServiceImpl implements DocUploadService {
 
             // ⑨ 任务完成
             asyncTaskService.done(taskId);
-            log.info("文档处理完成: docId={}, taskId={}", doc.getId(), taskId);
+            log.info("文档处理完成：文档ID={}，任务ID={}", doc.getId(), taskId);
 
             // ⑩ 清理旧版本（超过 5 个时自动删除最旧版本）
             versionService.cleanOldVersions(doc.getId());
 
         } catch (Exception e) {
             // 异步处理失败：标记任务和文档状态为 FAILED
-            log.error("文档处理失败: docId={}, taskId={}, error={}",
+            log.error("文档处理失败：文档ID={}，任务ID={}，错误={}",
                     doc.getId(), taskId, e.getMessage(), e);
             asyncTaskService.fail(taskId, e.getMessage());
             documentMapper.updateStatus(doc.getId(), DocStatus.FAILED.name());

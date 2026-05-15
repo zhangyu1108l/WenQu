@@ -98,12 +98,12 @@ public class FileExpireScheduler {
             } catch (Exception e) {
                 // 单个文档清理失败不影响其他文档，记录日志后继续
                 failCount++;
-                log.error("文档过期清理失败: docId={}, title={}, error={}",
+                log.error("文档过期清理失败：文档ID={}，标题={}，错误={}",
                         doc.getId(), doc.getTitle(), e.getMessage(), e);
             }
         }
 
-        log.info("===== 文件过期清理任务结束: 成功={}, 失败={} =====", successCount, failCount);
+        log.info("===== 文件过期清理任务结束：成功={}，失败={} =====", successCount, failCount);
     }
 
     /**
@@ -119,7 +119,7 @@ public class FileExpireScheduler {
      * @param doc 过期文档实体
      */
     private void cleanSingleDocument(DocumentDO doc) {
-        log.info("开始清理过期文档: docId={}, title={}, expireAt={}",
+        log.info("开始清理过期文档：文档ID={}，标题={}，过期时间={}",
                 doc.getId(), doc.getTitle(), doc.getExpireAt());
 
         // ② 查出该文档所有版本
@@ -129,17 +129,17 @@ public class FileExpireScheduler {
         for (DocumentVersionDO version : versions) {
             try {
                 minioUtil.deleteFile(version.getMinioBucket(), version.getMinioKey());
-                log.info("MinIO 文件已删除: docId={}, versionNo={}, objectKey={}",
+                log.info("MinIO 文件已删除：文档ID={}，版本号={}，对象路径={}",
                         doc.getId(), version.getVersionNo(), version.getMinioKey());
             } catch (Exception e) {
                 // 文件可能已被手动删除或不存在，记录警告但不中断流程
-                log.warn("MinIO 文件删除失败（可能已不存在）: docId={}, versionNo={}, error={}",
+                log.warn("MinIO 文件删除失败（可能已不存在）：文档ID={}，版本号={}，错误={}",
                         doc.getId(), version.getVersionNo(), e.getMessage());
             }
         }
 
         // ④ 将 expire_at 置为 null，标记已处理，避免下次定时任务重复清理
         documentMapper.clearExpireAtIgnoreTenant(doc.getId());
-        log.info("文档过期标记已清除: docId={}", doc.getId());
+        log.info("文档过期标记已清除：文档ID={}", doc.getId());
     }
 }

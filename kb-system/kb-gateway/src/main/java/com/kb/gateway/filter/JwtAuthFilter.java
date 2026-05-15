@@ -53,7 +53,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private final ReactiveStringRedisTemplate reactiveRedisTemplate;
     private final SecretKey signingKey;
 
-    /** JWT 黑名单 Redis Key 前缀，与 AuthServiceImpl 中保持一致 */
+    /** JWT 黑名单 Redis 键前缀，与 AuthServiceImpl 中保持一致 */
     private static final String JWT_BLACKLIST_PREFIX = "jwt:blacklist:";
 
     public JwtAuthFilter(WhiteListProperties whiteListProperties,
@@ -98,7 +98,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         // ② 从请求头 Authorization 取 Bearer Token，没有则返回 401
         String token = resolveToken(request);
         if (token == null) {
-            return unauthorizedResponse(exchange, "缺少有效的 Authorization 头");
+            return unauthorizedResponse(exchange, "缺少有效的鉴权请求头");
         }
 
         // ③ 检查 token 是否在 Redis 黑名单（用户登出后 token 被加入黑名单）
@@ -107,7 +107,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                 .flatMap(inBlacklist -> {
                     if (Boolean.TRUE.equals(inBlacklist)) {
                         // token 在黑名单中（用户已登出），返回 401
-                        return unauthorizedResponse(exchange, "token 已失效（用户已登出）");
+                        return unauthorizedResponse(exchange, "令牌已失效（用户已登出）");
                     }
 
                     // ④ 解析 token，过期或签名非法则返回 401
@@ -119,10 +119,10 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                                 .parseSignedClaims(token)
                                 .getPayload();
                     } catch (ExpiredJwtException e) {
-                        return unauthorizedResponse(exchange, "token 已过期");
+                        return unauthorizedResponse(exchange, "令牌已过期");
                     } catch (Exception e) {
-                        log.warn("JWT 解析失败: {}", e.getMessage());
-                        return unauthorizedResponse(exchange, "无效的 token");
+                        log.warn("JWT 解析失败：{}", e.getMessage());
+                        return unauthorizedResponse(exchange, "无效的令牌");
                     }
 
                     // ⑤ 从 token 中取出 userId / tenantId / role
@@ -131,7 +131,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                     Object roleObj = claims.get("role");
 
                     if (userId == null || tenantIdObj == null || roleObj == null) {
-                        return unauthorizedResponse(exchange, "token 缺少必要字段");
+                        return unauthorizedResponse(exchange, "令牌缺少必要字段");
                     }
 
                     String tenantId = tenantIdObj.toString();

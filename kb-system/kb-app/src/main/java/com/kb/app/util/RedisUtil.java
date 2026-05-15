@@ -45,8 +45,8 @@ public class RedisUtil {
      * 典型用法：JWT 登出时将 token 加入黑名单
      * {@code redisUtil.set("jwt:blacklist:" + token, "1", remainingSeconds)}
      *
-     * @param key        Redis Key
-     * @param value      Redis Value（字符串）
+     * @param key        Redis 键
+     * @param value      Redis 值（字符串）
      * @param ttlSeconds 过期时间（秒），到期后 Redis 自动删除
      */
     public void set(String key, String value, long ttlSeconds) {
@@ -54,34 +54,34 @@ public class RedisUtil {
     }
 
     /**
-     * 获取指定 Key 的值。
+     * 获取指定键的值。
      *
-     * @param key Redis Key
-     * @return 对应的值，Key 不存在时返回 null
+     * @param key Redis 键
+     * @return 对应的值，键不存在时返回 null
      */
     public String get(String key) {
         return stringRedisTemplate.opsForValue().get(key);
     }
 
     /**
-     * 删除指定 Key。
+     * 删除指定键。
      * <p>
      * 典型用法：删除对话历史缓存、手动清理黑名单等。
      *
-     * @param key Redis Key
-     * @return true=删除成功，false=Key 不存在
+     * @param key Redis 键
+     * @return true=删除成功，false=键不存在
      */
     public Boolean delete(String key) {
         return stringRedisTemplate.delete(key);
     }
 
     /**
-     * 判断指定 Key 是否存在。
+     * 判断指定键是否存在。
      * <p>
      * 典型用法：检查 JWT 是否在黑名单中
      * {@code redisUtil.hasKey("jwt:blacklist:" + token)}
      *
-     * @param key Redis Key
+     * @param key Redis 键
      * @return true=存在，false=不存在
      */
     public Boolean hasKey(String key) {

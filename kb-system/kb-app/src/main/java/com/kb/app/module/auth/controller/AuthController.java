@@ -125,7 +125,7 @@ public class AuthController {
     private String resolveToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
-            throw BusinessException.of(1008, "缺少有效的 Authorization 头");
+            throw BusinessException.of(1008, "缺少有效的鉴权请求头");
         }
         return header.substring(7);
     }

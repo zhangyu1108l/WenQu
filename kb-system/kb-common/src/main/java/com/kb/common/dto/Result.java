@@ -74,7 +74,7 @@ public class Result<T> {
         return new Result<>(code, msg, null);
     }
 
-    // ==================== Getter / Setter ====================
+    // ==================== 访问器 / 修改器 ====================
 
     public int getCode() {
         return code;

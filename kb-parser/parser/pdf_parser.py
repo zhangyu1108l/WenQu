@@ -58,10 +58,10 @@ class PdfParser:
 
         根据 PDF 内容自动判断解析路径（文字版/扫描版），提取文本块和表格。
 
-        Args:
+        参数:
             file_bytes: PDF 文件的原始字节内容
 
-        Returns:
+        返回:
             dict: 包含以下字段：
                 - text_blocks (List[dict]): 提取的文本块列表，每项含 text/page_no/is_possible_heading
                 - tables (List[dict]): 提取的表格列表，每项含 markdown_text/page_no/row_count/col_count
@@ -104,10 +104,10 @@ class PdfParser:
           3. 平均每页字符数 < SCAN_THRESHOLD（100）则判定为扫描版
              扫描版 PDF 的文字层几乎为空，pdfplumber 提取到的字符极少（通常远低于 100）
 
-        Args:
+        参数:
             pdf: 已打开的 pdfplumber.PDF 对象
 
-        Returns:
+        返回:
             bool: True 表示扫描版，False 表示文字版
         """
         # 只取前几页检测，避免大文件（如500页）全部扫描导致判定耗时过长
@@ -143,10 +143,10 @@ class PdfParser:
         注意：标题识别是启发式规则，不是100%准确。
         最终由下游的 smart_chunker 分块器根据上下文综合决定分块边界。
 
-        Args:
+        参数:
             pdf: 已打开的 pdfplumber.PDF 对象
 
-        Returns:
+        返回:
             List[dict]: 文本块列表，每项包含：
                 - text (str): 文本内容
                 - page_no (int): 所在页码（从1开始）
@@ -201,10 +201,10 @@ class PdfParser:
           - 置信度范围 0~100，越高越准确，60 以下通常是误识别或图片噪点
           - OCR 结果不做标题识别，因为 OCR 文字无字体大小等格式信息，无法启发式判断
 
-        Args:
+        参数:
             pdf: 已打开的 pdfplumber.PDF 对象
 
-        Returns:
+        返回:
             List[dict]: 文本块列表，每项包含：
                 - text (str): OCR 识别的文本内容
                 - page_no (int): 所在页码（从1开始）
@@ -298,10 +298,10 @@ class PdfParser:
           - 使用 Markdown 格式是因为 LLM 能很好地理解 Markdown 表格结构，
             在回答时可以正确引用表格内容。
 
-        Args:
+        参数:
             pdf: 已打开的 pdfplumber.PDF 对象
 
-        Returns:
+        返回:
             List[dict]: 表格列表，每项包含：
                 - markdown_text (str): Markdown 格式的表格文本
                 - page_no (int): 表格所在页码（从1开始）
@@ -362,10 +362,10 @@ class PdfParser:
 
         处理 pdfplumber 提取的原始单元格值：None 转空字符串，换行符替换为空格。
 
-        Args:
+        参数:
             cell: pdfplumber 提取的单元格原始值，可能为 None 或含换行符的字符串
 
-        Returns:
+        返回:
             str: 清理后的单元格文本
         """
         if cell is None:

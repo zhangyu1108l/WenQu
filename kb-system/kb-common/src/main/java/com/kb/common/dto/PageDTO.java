@@ -55,7 +55,7 @@ public class PageDTO<T> {
         return new PageDTO<>(total, page, size, list);
     }
 
-    // ==================== Getter / Setter ====================
+    // ==================== 访问器 / 修改器 ====================
 
     public long getTotal() {
         return total;

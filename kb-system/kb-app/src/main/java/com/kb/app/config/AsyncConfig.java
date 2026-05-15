@@ -1,9 +1,11 @@
 package com.kb.app.config;
 
+import com.kb.app.context.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -58,10 +60,40 @@ public class AsyncConfig {
         executor.setMaxPoolSize(maxSize);
         executor.setQueueCapacity(queueCapacity);
         executor.setThreadNamePrefix(threadNamePrefix);
+        executor.setTaskDecorator(tenantContextTaskDecorator());
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
-        log.info("文档处理线程池已初始化: coreSize={}, maxSize={}, queueCapacity={}",
+        log.info("文档处理线程池已初始化：核心线程数={}，最大线程数={}，队列容量={}",
                 coreSize, maxSize, queueCapacity);
         return executor;
+    }
+
+    private TaskDecorator tenantContextTaskDecorator() {
+        return runnable -> {
+            Long capturedTenantId = TenantContext.getTenantId();
+            Long capturedUserId = TenantContext.getUserId();
+            return () -> {
+                Long previousTenantId = TenantContext.getTenantId();
+                Long previousUserId = TenantContext.getUserId();
+                try {
+                    TenantContext.clear();
+                    if (capturedTenantId != null) {
+                        TenantContext.setTenantId(capturedTenantId);
+                    }
+                    if (capturedUserId != null) {
+                        TenantContext.setUserId(capturedUserId);
+                    }
+                    runnable.run();
+                } finally {
+                    TenantContext.clear();
+                    if (previousTenantId != null) {
+                        TenantContext.setTenantId(previousTenantId);
+                    }
+                    if (previousUserId != null) {
+                        TenantContext.setUserId(previousUserId);
+                    }
+                }
+            };
+        };
     }
 }

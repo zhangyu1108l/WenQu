@@ -56,11 +56,11 @@
         <lombok.version>1.18.36</lombok.version>
     </properties>
 
-    <!-- ==================== 依赖版本锁定（BOM） ==================== -->
+    <!-- ==================== 依赖版本锁定（依赖清单） ==================== -->
     <dependencyManagement>
         <dependencies>
 
-            <!-- ===== Spring Boot BOM =====
+            <!-- ===== Spring Boot 依赖清单 =====
                  Spring Boot 3.2.x 统一管理 spring-boot-starter-*、
                  spring-boot-starter-data-redis、jackson 等所有 Boot 生态依赖版本 -->
             <dependency>
@@ -71,7 +71,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- ===== Spring Cloud BOM =====
+            <!-- ===== Spring Cloud 依赖清单 =====
                  Spring Cloud 2023.0.x 管理 Gateway 4.x、LoadBalancer 等版本，
                  与 Spring Boot 3.2.x 版本对应 -->
             <dependency>
@@ -82,7 +82,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- ===== Spring AI BOM =====
+            <!-- ===== Spring AI 依赖清单 =====
                  Spring AI 1.0.0 统一管理 Spring AI 相关模块版本，
                  用于对接 DeepSeek Chat（LLM）和智谱 embedding-3（向量化） -->
             <dependency>
@@ -101,7 +101,7 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- ===== MyBatis-Plus =====
+            <!-- ===== MyBatis-Plus ORM 框架 =====
                  ORM 框架，替代原生 MyBatis；
                  内置 TenantLineInnerInterceptor 实现多租户自动追加 tenant_id 条件 -->
             <dependency>
@@ -120,7 +120,7 @@
                 <version>${mybatis-plus.version}</version>
             </dependency>
 
-            <!-- ===== MySQL Driver =====
+            <!-- ===== MySQL 驱动 =====
                  MySQL 8.0 JDBC 驱动，连接关系型数据库 -->
             <dependency>
                 <groupId>com.mysql</groupId>
@@ -147,7 +147,7 @@
                 <version>${jjwt.version}</version>
             </dependency>
 
-            <!-- ===== MinIO Java SDK =====
+            <!-- ===== MinIO Java 开发工具包 =====
                  对象存储客户端，每个租户独立 Bucket（tenant-{tenantId}），
                  存储上传的 PDF/DOCX 文件 -->
             <dependency>
@@ -156,7 +156,7 @@
                 <version>${minio.version}</version>
             </dependency>
 
-            <!-- ===== Milvus Java SDK =====
+            <!-- ===== Milvus Java 开发工具包 =====
                  向量数据库客户端，每个租户独立 Collection（tenant_{tenantId}_docs），
                  存储文档 Embedding 向量，支持 RAG 检索 -->
             <dependency>
@@ -165,7 +165,7 @@
                 <version>${milvus.version}</version>
             </dependency>
 
-            <!-- ===== Lombok =====
+            <!-- ===== Lombok 注解处理器 =====
                  编译期注解处理器，自动生成 getter/setter/builder 等样板代码，
                  项目强制使用 @Data @Builder @Slf4j 等注解 -->
             <dependency>

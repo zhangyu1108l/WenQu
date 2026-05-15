@@ -47,6 +47,6 @@ public enum UserRole {
                 return role;
             }
         }
-        throw new IllegalArgumentException("无效的用户角色编码: " + code);
+        throw new IllegalArgumentException("无效的用户角色编码：" + code);
     }
 }

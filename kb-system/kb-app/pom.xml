@@ -39,7 +39,7 @@
             <artifactId>kb-common</artifactId>
         </dependency>
 
-        <!-- ===== Spring Boot Starters ===== -->
+        <!-- ===== Spring Boot 启动器 ===== -->
 
         <!-- Web（Servlet）：提供 REST 控制器、SSE（SseEmitter）支持 -->
         <dependency>
@@ -53,7 +53,7 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- ===== Spring AI ===== -->
+        <!-- ===== Spring AI 相关依赖 ===== -->
 
         <!-- Spring AI OpenAI Starter：通过 OpenAI 兼容协议对接 DeepSeek Chat（LLM）
              和智谱 embedding-3（向量化），统一由 Spring AI 管理 -->

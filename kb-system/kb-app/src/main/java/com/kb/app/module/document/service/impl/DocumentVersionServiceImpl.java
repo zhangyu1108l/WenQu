@@ -80,7 +80,7 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
 
         // ④ 上传文件到 MinIO
         minioUtil.uploadFile(bucket, objectKey, fileBytes, contentType);
-        log.info("新版本文件已上传: documentId={}, versionNo={}, objectKey={}",
+        log.info("新版本文件已上传：文档ID={}，版本号={}，对象路径={}",
                 documentId, newVersionNo, objectKey);
 
         // ⑤ 将旧激活版本的 is_active 改为 0（必须在插入新版本之前）
@@ -101,7 +101,7 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
                 .build();
         documentVersionMapper.insert(newVersion);
 
-        log.info("新版本记录已插入: documentId={}, versionNo={}, versionId={}",
+        log.info("新版本记录已插入：文档ID={}，版本号={}，版本ID={}",
                 documentId, newVersionNo, newVersion.getId());
 
         // ⑦ 返回新版本的 DocumentVersionDO
@@ -146,13 +146,13 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
 
         // ③ 计算需要删除的版本数量（总数 - 5）
         int deleteCount = ascVersions.size() - MAX_VERSION_COUNT;
-        log.info("版本数超过上限，需要清理: documentId={}, 总版本数={}, 需删除={}",
+        log.info("版本数超过上限，需要清理：文档ID={}，总版本数={}，需删除数量={}",
                 documentId, ascVersions.size(), deleteCount);
 
         // ④ 对每个需要删除的旧版本，按顺序执行清理
         for (int i = 0; i < deleteCount; i++) {
             DocumentVersionDO oldVersion = ascVersions.get(i);
-            log.info("开始清理旧版本: documentId={}, versionNo={}, versionId={}",
+            log.info("开始清理旧版本：文档ID={}，版本号={}，版本ID={}",
                     documentId, oldVersion.getVersionNo(), oldVersion.getId());
 
             // ④-a 从 MinIO 删除原始文件
@@ -167,16 +167,16 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
             // ④-c 调用 Milvus 批量删除向量（Step 5 实现，当前留 TODO）
             if (!milvusIds.isEmpty()) {
                 // TODO: Step 5 实现 Milvus 向量删除，调用 MilvusUtil.deleteVectors(collectionName, milvusIds)
-                log.info("待清理 Milvus 向量: versionId={}, milvusIds 数量={}", oldVersion.getId(), milvusIds.size());
+                log.info("待清理 Milvus 向量：版本ID={}，Milvus ID 数量={}", oldVersion.getId(), milvusIds.size());
             }
 
             // ④-d 删除 doc_chunk 记录
             int deletedChunks = docChunkMapper.deleteByVersionId(oldVersion.getId());
-            log.info("doc_chunk 记录已删除: versionId={}, 删除数量={}", oldVersion.getId(), deletedChunks);
+            log.info("doc_chunk 记录已删除：版本ID={}，删除数量={}", oldVersion.getId(), deletedChunks);
 
             // ④-e 删除 document_version 记录
             documentVersionMapper.deleteById(oldVersion.getId());
-            log.info("旧版本清理完成: documentId={}, versionNo={}", documentId, oldVersion.getVersionNo());
+            log.info("旧版本清理完成：文档ID={}，版本号={}", documentId, oldVersion.getVersionNo());
         }
     }
 
@@ -215,4 +215,3 @@ public class DocumentVersionServiceImpl implements DocumentVersionService {
         return activeVersion;
     }
 }
-

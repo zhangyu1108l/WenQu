@@ -73,10 +73,10 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     @Transactional(rollbackFor = Exception.class)
     public void batchEmbedAndStore(List<ChunkDTO> chunks, DocumentDO doc, DocumentVersionDO version) {
         if (doc == null || doc.getTenantId() == null || doc.getId() == null) {
-            throw new IllegalArgumentException("document and tenantId must not be null");
+            throw new IllegalArgumentException("文档和租户ID不能为空");
         }
         if (version == null || version.getId() == null) {
-            throw new IllegalArgumentException("document version must not be null");
+            throw new IllegalArgumentException("文档版本不能为空");
         }
 
         Long tenantId = doc.getTenantId();
@@ -88,7 +88,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             collectionHelper.createCollectionIfNotExists(tenantId);
 
             if (CollectionUtils.isEmpty(chunks)) {
-                log.info("文档无可写入 chunk，跳过 Embedding 写入: docId={}, versionId={}",
+                log.info("文档无可写入分块，跳过向量写入：文档ID={}，版本ID={}",
                         doc.getId(), version.getId());
                 return;
             }
@@ -101,8 +101,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             // 3. 调用智谱 API 批量向量化；此步骤是整个流程中最耗时的部分。
             List<float[]> embeddings = embeddingClient.embedBatch(texts);
             if (embeddings.size() != chunks.size()) {
-                throw new IllegalStateException("Embedding result size mismatch, chunks="
-                        + chunks.size() + ", embeddings=" + embeddings.size());
+                throw new IllegalStateException("向量化结果数量不匹配：分块数量="
+                        + chunks.size() + "，向量数量=" + embeddings.size());
             }
 
             // 4. 归一化所有向量。
@@ -130,8 +130,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             // 6. 批量插入 Milvus，获取返回的 milvus_id 列表。
             List<String> milvusIds = insertToMilvus(tenantId, insertList);
             if (milvusIds.size() != chunks.size()) {
-                throw new IllegalStateException("Milvus id size mismatch, chunks="
-                        + chunks.size() + ", milvusIds=" + milvusIds.size());
+                throw new IllegalStateException("Milvus ID 数量不匹配：分块数量="
+                        + chunks.size() + "，Milvus ID 数量=" + milvusIds.size());
             }
 
             // 7. 将 milvus_id 回填到对应的 chunk 数据中。
@@ -157,7 +157,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             }
 
             // 9. 完成。
-            log.info("Embedding 写入完成: tenantId={}, docId={}, versionId={}, chunkCount={}",
+            log.info("向量写入完成：租户ID={}，文档ID={}，版本ID={}，分块数量={}",
                     tenantId, doc.getId(), version.getId(), chunks.size());
         } finally {
             TenantContext.clear();
@@ -271,10 +271,10 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 .withExpr(expr)
                 .build();
         assertSuccess(milvusServiceClient.delete(deleteParam),
-                "delete vectors from " + collectionName);
+                "从集合 " + collectionName + " 删除向量");
 
         flushCollection(collectionName);
-        log.info("Milvus 向量已删除: tenantId={}, collection={}, count={}",
+        log.info("Milvus 向量已删除：租户ID={}，集合={}，数量={}",
                 tenantId, collectionName, milvusIds.size());
     }
 
@@ -285,7 +285,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
     private List<Float> toFloatList(float[] vector) {
         if (vector == null) {
-            throw new IllegalArgumentException("embedding vector must not be null");
+            throw new IllegalArgumentException("向量不能为空");
         }
 
         List<Float> values = new ArrayList<>(vector.length);
@@ -301,15 +301,15 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 .withSyncFlush(Boolean.TRUE)
                 .build();
         assertSuccess(milvusServiceClient.flush(flushParam),
-                "flush Milvus collection " + collectionName);
+                "刷新 Milvus 集合 " + collectionName);
     }
 
     private void assertSuccess(R<?> response, String operation) {
         if (response == null) {
-            throw new IllegalStateException("Milvus " + operation + " failed: empty response");
+            throw new IllegalStateException("Milvus 操作失败：操作=" + operation + "，响应为空");
         }
         if (response.getStatus() != R.Status.Success.getCode()) {
-            throw new IllegalStateException("Milvus " + operation + " failed: " + response.getMessage());
+            throw new IllegalStateException("Milvus 操作失败：操作=" + operation + "，原因=" + response.getMessage());
         }
     }
 }

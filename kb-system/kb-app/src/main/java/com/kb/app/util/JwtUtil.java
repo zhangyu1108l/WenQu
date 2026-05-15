@@ -178,7 +178,7 @@ public class JwtUtil {
             return true;
         } catch (Exception e) {
             // 签名错误、格式错误等其他异常，视为无效 token
-            log.warn("JWT 解析失败: {}", e.getMessage());
+            log.warn("JWT 解析失败：{}", e.getMessage());
             return true;
         }
     }
@@ -209,7 +209,7 @@ public class JwtUtil {
             long remaining = (expMillis - System.currentTimeMillis()) / 1000;
             return Math.max(remaining, 0);
         } catch (Exception e) {
-            log.warn("JWT 解析失败，无法获取剩余有效期: {}", e.getMessage());
+            log.warn("JWT 解析失败，无法获取剩余有效期：{}", e.getMessage());
             return 0;
         }
     }

@@ -36,13 +36,13 @@ public class MinioProperties {
     private String endpoint;
 
     /**
-     * MinIO 访问密钥（Access Key），对应 MinIO 的 Root User。
+     * MinIO 访问密钥，对应 MinIO 的根用户。
      * 必须从环境变量 MINIO_ACCESS_KEY 读取，不允许硬编码。
      */
     private String accessKey;
 
     /**
-     * MinIO 秘密密钥（Secret Key），对应 MinIO 的 Root Password。
+     * MinIO 秘密密钥，对应 MinIO 的根密码。
      * 必须从环境变量 MINIO_SECRET_KEY 读取，不允许硬编码。
      */
     private String secretKey;

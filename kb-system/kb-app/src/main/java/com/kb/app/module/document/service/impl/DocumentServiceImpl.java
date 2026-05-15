@@ -176,7 +176,7 @@ public class DocumentServiceImpl implements DocumentService {
                 activeVersion.getMinioBucket(),
                 activeVersion.getMinioKey(),
                 PRESIGNED_EXPIRE_MINUTES);
-        log.info("预签名下载 URL 已生成: docId={}, expireMinutes={}",
+        log.info("预签名下载地址已生成：文档ID={}，有效分钟数={}",
                 documentId, PRESIGNED_EXPIRE_MINUTES);
 
         return url;
@@ -203,7 +203,7 @@ public class DocumentServiceImpl implements DocumentService {
                 new LambdaUpdateWrapper<DocumentDO>()
                         .eq(DocumentDO::getId, documentId)
                         .set(DocumentDO::getExpireAt, expireAt));
-        log.info("文档过期时间已更新: docId={}, expireAt={}",
+        log.info("文档过期时间已更新：文档ID={}，过期时间={}",
                 documentId, expireAt != null ? expireAt : "永不过期");
     }
 
@@ -237,11 +237,11 @@ public class DocumentServiceImpl implements DocumentService {
 
         // ② 查出该文档所有版本
         List<DocumentVersionDO> versions = documentVersionMapper.selectVersionList(documentId);
-        log.info("开始删除文档: docId={}, 版本数={}", documentId, versions.size());
+        log.info("开始删除文档：文档ID={}，版本数={}", documentId, versions.size());
 
         // ③ 对每个版本依次清理关联资源
         for (DocumentVersionDO version : versions) {
-            log.info("清理版本资源: docId={}, versionId={}, versionNo={}",
+            log.info("清理版本资源：文档ID={}，版本ID={}，版本号={}",
                     documentId, version.getId(), version.getVersionNo());
 
             // ③-a 删除 MinIO 文件（第 1 步）
@@ -262,23 +262,23 @@ public class DocumentServiceImpl implements DocumentService {
             if (!milvusIds.isEmpty()) {
                 // TODO: Step 5 实现 Milvus 向量删除
                 // MilvusUtil.deleteVectors("tenant_" + tenantId + "_docs", milvusIds)
-                log.info("待清理 Milvus 向量: versionId={}, milvusIds 数量={}",
+                log.info("待清理 Milvus 向量：版本ID={}，Milvus ID 数量={}",
                         version.getId(), milvusIds.size());
             }
 
             // ③-d 删除 doc_chunk 记录（第 3 步）
             int deletedChunks = docChunkMapper.deleteByVersionId(version.getId());
-            log.info("doc_chunk 记录已删除: versionId={}, 删除数量={}",
+            log.info("doc_chunk 记录已删除：版本ID={}，删除数量={}",
                     version.getId(), deletedChunks);
 
             // ③-e 删除 document_version 记录（第 4 步）
             documentVersionMapper.deleteById(version.getId());
-            log.info("版本记录已删除: versionId={}", version.getId());
+            log.info("版本记录已删除：版本ID={}", version.getId());
         }
 
         // ④ 删除 document 记录本身
         documentMapper.deleteById(documentId);
-        log.info("文档删除完成: docId={}", documentId);
+        log.info("文档删除完成：文档ID={}", documentId);
     }
 
     // ==================== 私有辅助方法 ====================
@@ -343,4 +343,3 @@ public class DocumentServiceImpl implements DocumentService {
                 .build();
     }
 }
-

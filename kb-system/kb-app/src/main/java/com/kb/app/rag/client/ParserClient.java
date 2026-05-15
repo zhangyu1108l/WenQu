@@ -59,7 +59,7 @@ public class ParserClient {
      */
     public List<ChunkDTO> parse(byte[] fileBytes, String fileType) {
         String url = parserBaseUrl + "/parse";
-        log.info("调用 Python 解析侧车: url={}, fileType={}, fileSize={} bytes",
+        log.info("调用 Python 解析侧车：地址={}，文件类型={}，文件大小={} 字节",
                 url, fileType, fileBytes.length);
 
         try {
@@ -81,32 +81,32 @@ public class ParserClient {
                     url, requestEntity, ParseResponse.class);
 
             if (response.getStatusCode() != HttpStatus.OK) {
-                log.warn("Python 解析侧车返回非 200 状态: url={}, status={}", url, response.getStatusCode());
+                log.warn("Python 解析侧车返回非 200 状态：地址={}，状态={}", url, response.getStatusCode());
                 throw BusinessException.of(4002, "解析服务返回错误");
             }
 
             ParseResponse responseBody = response.getBody();
             if (responseBody == null || responseBody.getChunks() == null) {
-                log.warn("Python 解析侧车返回空结果: url={}, fileType={}", url, fileType);
+                log.warn("Python 解析侧车返回空结果：地址={}，文件类型={}", url, fileType);
                 return Collections.emptyList();
             }
 
             List<ChunkDTO> chunks = responseBody.getChunks();
-            log.info("Python 解析侧车返回: chunkCount={}", chunks.size());
+            log.info("Python 解析侧车返回：分块数量={}", chunks.size());
             return chunks;
         } catch (ResourceAccessException e) {
             // 连接失败、连接超时、读取超时都属于 I/O 不可达场景，按侧车不可用处理。
-            log.error("Python 解析侧车不可用: url={}, fileType={}, error={}",
+            log.error("Python 解析侧车不可用：地址={}，文件类型={}，错误={}",
                     url, fileType, e.getMessage());
             throw BusinessException.of(4001, "解析服务不可用");
         } catch (HttpStatusCodeException e) {
             // HTTP 4xx/5xx 表示侧车已响应但解析失败，按解析服务返回错误处理。
-            log.error("Python 解析侧车返回错误: url={}, fileType={}, status={}, body={}",
+            log.error("Python 解析侧车返回错误：地址={}，文件类型={}，状态={}，响应体={}",
                     url, fileType, e.getStatusCode(), e.getResponseBodyAsString());
             throw BusinessException.of(4002, "解析服务返回错误");
         } catch (RestClientException e) {
             // 其他 RestTemplate 异常保留为兜底解析失败，避免泄露底层实现细节。
-            log.error("调用 Python 解析侧车失败: url={}, fileType={}, error={}",
+            log.error("调用 Python 解析侧车失败：地址={}，文件类型={}，错误={}",
                     url, fileType, e.getMessage());
             throw BusinessException.of(4003, "文档解析失败");
         }
@@ -126,7 +126,7 @@ public class ParserClient {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             return response.getStatusCode().is2xxSuccessful();
         } catch (RestClientException e) {
-            log.warn("Python 解析侧车健康检查失败: url={}, error={}", url, e.getMessage());
+            log.warn("Python 解析侧车健康检查失败：地址={}，错误={}", url, e.getMessage());
             return false;
         }
     }
