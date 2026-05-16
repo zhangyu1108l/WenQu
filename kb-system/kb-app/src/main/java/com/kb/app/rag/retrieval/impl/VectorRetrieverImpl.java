@@ -60,12 +60,6 @@ public class VectorRetrieverImpl implements VectorRetriever {
             FIELD_HEADING_PATH,
             FIELD_PAGE_NO
     );
-    private static final List<String> FALLBACK_OUT_FIELDS = Arrays.asList(
-            FIELD_CHUNK_ID,
-            FIELD_DOCUMENT_ID,
-            FIELD_CONTENT
-    );
-
     private final MilvusServiceClient milvusServiceClient;
     private final MilvusCollectionHelper collectionHelper;
     private final ZhipuEmbeddingClient embeddingClient;
@@ -99,15 +93,10 @@ public class VectorRetrieverImpl implements VectorRetriever {
         float[] normalizedVector = embeddingClient.normalizeVector(queryVector);
         List<List<Float>> queryVectorList = List.of(toFloatList(normalizedVector));
         String collectionName = collectionHelper.getCollectionName(tenantId);
+        collectionHelper.ensureCollectionLoaded(tenantId);
 
         SearchParam searchParam = buildSearchParam(collectionName, queryVectorList, topK, OUT_FIELDS);
         R<SearchResults> response = milvusServiceClient.search(searchParam);
-        if (shouldRetryWithoutOptionalFields(response)) {
-            log.warn("Milvus 集合缺少可选来源字段，降级使用基础输出字段检索：集合={}", collectionName);
-            response = milvusServiceClient.search(
-                    buildSearchParam(collectionName, queryVectorList, topK, FALLBACK_OUT_FIELDS)
-            );
-        }
         assertSuccess(response, "在集合 " + collectionName + " 中检索向量");
 
         SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
@@ -192,7 +181,7 @@ public class VectorRetrieverImpl implements VectorRetriever {
         Long chunkId = toLong(getFieldValue(idScore, FIELD_CHUNK_ID));
         Long documentId = toLong(getFieldValue(idScore, FIELD_DOCUMENT_ID));
         String content = toStringValue(getFieldValue(idScore, FIELD_CONTENT));
-        String headingPath = toStringValue(getFieldValue(idScore, FIELD_HEADING_PATH));
+        String headingPath = toHeadingPath(getFieldValue(idScore, FIELD_HEADING_PATH));
         Integer pageNo = toInteger(getFieldValue(idScore, FIELD_PAGE_NO));
 
         DocChunkDO docChunk = findDocChunkByMilvusId(milvusId, tenantId);
@@ -351,18 +340,26 @@ public class VectorRetrieverImpl implements VectorRetriever {
         if (value == null) {
             return null;
         }
+        int pageNo;
         if (value instanceof Number number) {
-            return number.intValue();
+            pageNo = number.intValue();
+            return pageNo < 0 ? null : pageNo;
         }
         String text = String.valueOf(value);
         if (!StringUtils.hasText(text)) {
             return null;
         }
-        return Integer.valueOf(text);
+        pageNo = Integer.parseInt(text);
+        return pageNo < 0 ? null : pageNo;
     }
 
     private String toStringValue(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private String toHeadingPath(Object value) {
+        String text = toStringValue(value);
+        return StringUtils.hasText(text) ? text : null;
     }
 
     private float normalizeScore(float score) {
@@ -373,22 +370,6 @@ public class VectorRetrieverImpl implements VectorRetriever {
             return 1.0F;
         }
         return score;
-    }
-
-    private boolean shouldRetryWithoutOptionalFields(R<?> response) {
-        if (response == null || response.getStatus() == R.Status.Success.getCode()) {
-            return false;
-        }
-
-        String message = response.getMessage();
-        if (!StringUtils.hasText(message)) {
-            return false;
-        }
-
-        String lowerMessage = message.toLowerCase(Locale.ROOT);
-        return lowerMessage.contains(FIELD_HEADING_PATH)
-                || lowerMessage.contains(FIELD_PAGE_NO)
-                || lowerMessage.contains("field");
     }
 
     private void assertSuccess(R<?> response, String operation) {

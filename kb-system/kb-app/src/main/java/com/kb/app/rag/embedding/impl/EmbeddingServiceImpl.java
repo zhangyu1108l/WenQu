@@ -47,8 +47,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     private static final String FIELD_DOCUMENT_ID = "document_id";
     private static final String FIELD_VERSION_ID = "version_id";
     private static final String FIELD_CONTENT = "content";
+    private static final String FIELD_HEADING_PATH = "heading_path";
+    private static final String FIELD_PAGE_NO = "page_no";
     private static final String FIELD_EMBEDDING = "embedding";
     private static final long TEMP_CHUNK_INDEX_FACTOR = 1_000_000L;
+    private static final long EMPTY_PAGE_NO = -1L;
 
     private final ZhipuEmbeddingClient embeddingClient;
     private final MilvusCollectionHelper collectionHelper;
@@ -123,6 +126,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                         .documentId(doc.getId())
                         .versionId(version.getId())
                         .content(chunk.getContent())
+                        .headingPath(chunk.getHeadingPath())
+                        .pageNo(chunk.getPageNo())
                         .embedding(normalizedEmbeddings.get(i))
                         .build());
             }
@@ -176,7 +181,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
      * Milvus Java SDK 的普通 insert 要求按列组织数据，即每个 {@link InsertParam.Field}
      * 表示一整列的值；这和业务代码里常见的"一行一个对象"写法不同。
      * 常见踩坑点是把 {@code List<MilvusInsertDTO>} 直接当作行式数据传入，
-     * 但当前 SDK 需要先拆成 chunk_id、tenant_id、document_id、version_id、content、embedding 六列。
+     * 但当前 SDK 需要先拆成 chunk_id、tenant_id、document_id、version_id、content、
+     * heading_path、page_no、embedding 共八列。
      * <p>
      * 返回的 ID 是 Milvus autoID 主键，对应 MySQL doc_chunk.milvus_id 字段。
      *
@@ -190,6 +196,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             return List.of();
         }
 
+        collectionHelper.ensureCollectionLoaded(tenantId);
+
         // 1. 获取 Collection 名称。
         String collectionName = collectionHelper.getCollectionName(tenantId);
 
@@ -199,6 +207,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         List<Long> documentIds = data.stream().map(MilvusInsertDTO::getDocumentId).collect(Collectors.toList());
         List<Long> versionIds = data.stream().map(MilvusInsertDTO::getVersionId).collect(Collectors.toList());
         List<String> contents = data.stream().map(MilvusInsertDTO::getContent).collect(Collectors.toList());
+        List<String> headingPaths = data.stream().map(this::normalizeHeadingPath).collect(Collectors.toList());
+        List<Long> pageNos = data.stream().map(this::normalizePageNo).collect(Collectors.toList());
         List<List<Float>> embeddings = data.stream()
                 .map(item -> toFloatList(item.getEmbedding()))
                 .collect(Collectors.toList());
@@ -209,6 +219,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 InsertParam.Field.builder().name(FIELD_DOCUMENT_ID).values(documentIds).build(),
                 InsertParam.Field.builder().name(FIELD_VERSION_ID).values(versionIds).build(),
                 InsertParam.Field.builder().name(FIELD_CONTENT).values(contents).build(),
+                InsertParam.Field.builder().name(FIELD_HEADING_PATH).values(headingPaths).build(),
+                InsertParam.Field.builder().name(FIELD_PAGE_NO).values(pageNos).build(),
                 InsertParam.Field.builder().name(FIELD_EMBEDDING).values(embeddings).build()
         );
 
@@ -252,6 +264,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         // 1. 获取 Collection 名称。
         String collectionName = collectionHelper.getCollectionName(tenantId);
 
+        collectionHelper.ensureCollectionLoaded(tenantId);
+
         flushCollection(collectionName);
 
         // 2. 构建删除表达式：id in [id1, id2, ...]。
@@ -293,6 +307,16 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             values.add(value);
         }
         return values;
+    }
+
+    private String normalizeHeadingPath(MilvusInsertDTO item) {
+        String headingPath = item.getHeadingPath();
+        return headingPath == null ? "" : headingPath;
+    }
+
+    private Long normalizePageNo(MilvusInsertDTO item) {
+        Integer pageNo = item.getPageNo();
+        return pageNo == null ? EMPTY_PAGE_NO : pageNo.longValue();
     }
 
     private void flushCollection(String collectionName) {

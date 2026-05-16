@@ -11,6 +11,7 @@ import io.milvus.param.collection.CreateCollectionParam;
 import io.milvus.param.collection.DropCollectionParam;
 import io.milvus.param.collection.FieldType;
 import io.milvus.param.collection.HasCollectionParam;
+import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.index.CreateIndexParam;
 import org.springframework.stereotype.Component;
 
@@ -36,9 +37,13 @@ public class MilvusCollectionHelper {
     private static final String FIELD_DOCUMENT_ID = "document_id";
     private static final String FIELD_VERSION_ID = "version_id";
     private static final String FIELD_CONTENT = "content";
+    private static final String FIELD_HEADING_PATH = "heading_path";
+    private static final String FIELD_PAGE_NO = "page_no";
     private static final String FIELD_EMBEDDING = "embedding";
     private static final String EMBEDDING_INDEX_NAME = "idx_embedding_ivf_flat";
+    private static final int EMBEDDING_DIMENSION = 2048;
     private static final int CONTENT_MAX_LENGTH = 65535;
+    private static final int HEADING_PATH_MAX_LENGTH = 500;
 
     private final MilvusServiceClient milvusServiceClient;
     private final MilvusProperties milvusProperties;
@@ -77,6 +82,8 @@ public class MilvusCollectionHelper {
      *     <li>document_id：文档 ID，用于按文档定位、删除或排查向量数据。</li>
      *     <li>version_id：文档版本 ID，用于版本清理时同步定位旧版本向量。</li>
      *     <li>content：chunk 原始文本，用于检索结果来源引用展示。</li>
+     *     <li>heading_path：标题路径，用于来源引用展示（无标题时存空串）。</li>
+     *     <li>page_no：PDF 页码，Word 等无页码场景存 -1。</li>
      *     <li>embedding：智谱 embedding-3 生成的 FLOAT_VECTOR，维度固定为 2048。</li>
      * </ul>
      * 索引选择 IVF_FLAT 而不是 HNSW：IVF_FLAT 内存占用更低，适合当前小规模数据场景
@@ -129,10 +136,21 @@ public class MilvusCollectionHelper {
                         .withMaxLength(CONTENT_MAX_LENGTH)
                         .build(),
                 FieldType.newBuilder()
+                        .withName(FIELD_HEADING_PATH)
+                        .withDescription("Heading path for source citation")
+                        .withDataType(DataType.VarChar)
+                        .withMaxLength(HEADING_PATH_MAX_LENGTH)
+                        .build(),
+                FieldType.newBuilder()
+                        .withName(FIELD_PAGE_NO)
+                        .withDescription("PDF page number, -1 means not applicable")
+                        .withDataType(DataType.Int64)
+                        .build(),
+                FieldType.newBuilder()
                         .withName(FIELD_EMBEDDING)
                         .withDescription("Zhipu embedding-3 vector")
                         .withDataType(DataType.FloatVector)
-                        .withDimension(milvusProperties.getVectorDimension())
+                        .withDimension(EMBEDDING_DIMENSION)
                         .build()
         );
 
@@ -159,6 +177,35 @@ public class MilvusCollectionHelper {
                 .build();
         assertSuccess(milvusServiceClient.createIndex(createIndexParam),
                 "为 Milvus 集合 " + collectionName + " 创建向量索引");
+
+        // Milvus 2.x：建表并建索引后必须 load 到内存，后续 insert/search 才能生效。
+        loadCollectionInternal(collectionName);
+    }
+
+    /**
+     * 若集合已存在则加载到内存（幂等；Milvus 进程重启后需重新 load）。
+     * <p>
+     * 写入与检索前调用，避免「集合存在但未加载」导致操作失败。
+     *
+     * @param tenantId 租户 ID
+     */
+    public void ensureCollectionLoaded(Long tenantId) {
+        if (tenantId == null) {
+            throw new IllegalArgumentException("租户ID不能为空");
+        }
+        String collectionName = getCollectionName(tenantId);
+        if (!hasCollection(collectionName)) {
+            return;
+        }
+        loadCollectionInternal(collectionName);
+    }
+
+    private void loadCollectionInternal(String collectionName) {
+        LoadCollectionParam loadParam = LoadCollectionParam.newBuilder()
+                .withCollectionName(collectionName)
+                .build();
+        assertSuccess(milvusServiceClient.loadCollection(loadParam),
+                "加载 Milvus 集合 " + collectionName);
     }
 
     /**

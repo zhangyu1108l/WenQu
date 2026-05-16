@@ -50,5 +50,9 @@ public class MilvusInsertDTO {
     /**
      * 归一化后的向量数组。
      */
+    private String headingPath;
+
+    private Integer pageNo;
+
     private float[] embedding;
 }

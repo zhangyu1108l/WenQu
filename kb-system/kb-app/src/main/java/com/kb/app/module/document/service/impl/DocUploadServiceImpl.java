@@ -1,5 +1,6 @@
 package com.kb.app.module.document.service.impl;
 
+import com.kb.app.context.TenantContext;
 import com.kb.app.module.document.entity.DocumentDO;
 import com.kb.app.module.document.entity.DocumentVersionDO;
 import com.kb.app.module.document.mapper.DocumentMapper;
@@ -87,6 +88,10 @@ public class DocUploadServiceImpl implements DocUploadService {
      */
     @Override
     public Map<String, Long> upload(MultipartFile file, Long tenantId, Long userId) {
+        if (!parserClient.checkHealth()) {
+            throw BusinessException.of(4001, "解析服务不可用，请稍后再试");
+        }
+
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || originalFilename.isBlank()) {
             throw BusinessException.of(3001, "文件名不能为空");
@@ -98,7 +103,6 @@ public class DocUploadServiceImpl implements DocUploadService {
             throw BusinessException.of(3002, "不支持的文件类型，仅支持 pdf / docx");
         }
 
-        // ② 根据 tenantId + 文件名（去扩展名）查是否存在同名文档
         String title = originalFilename.substring(0, originalFilename.lastIndexOf('.'));
         DocumentDO existingDoc = documentMapper.selectByTenantIdAndTitle(tenantId, title);
 
@@ -171,7 +175,7 @@ public class DocUploadServiceImpl implements DocUploadService {
      *     <li>更新 document.status = PARSING（前端可据此展示"解析中"阶段）</li>
      *     <li>60% — 调用 Python 侧车解析文档</li>
      *     <li>更新 document.status = EMBEDDING（前端可据此展示"向量化中"阶段）</li>
-     *     <li>90% — 【TODO - Step 5 实现】批量 Embedding + 写 Milvus + 写 doc_chunk</li>
+     *     <li>90% — 批量 Embedding + 写 Milvus + 写 doc_chunk</li>
      *     <li>更新 document.status = READY（文档可用于 RAG 检索）</li>
      *     <li>100% — 任务完成</li>
      *     <li>清理超出 5 个的旧版本</li>
@@ -187,6 +191,9 @@ public class DocUploadServiceImpl implements DocUploadService {
     @Async("docProcessPool")
     public void processAsync(DocumentDO doc, byte[] fileBytes,
                              String filename, Long taskId, Long tenantId) {
+        Long previousTenantId = TenantContext.getTenantId();
+        Long previousUserId = TenantContext.getUserId();
+        TenantContext.setTenantId(tenantId);
         try {
             // ① 开始处理，更新进度 10%
             asyncTaskService.running(taskId, 10);
@@ -239,6 +246,14 @@ public class DocUploadServiceImpl implements DocUploadService {
                     doc.getId(), taskId, e.getMessage(), e);
             asyncTaskService.fail(taskId, e.getMessage());
             documentMapper.updateStatus(doc.getId(), DocStatus.FAILED.name());
+        } finally {
+            TenantContext.clear();
+            if (previousTenantId != null) {
+                TenantContext.setTenantId(previousTenantId);
+            }
+            if (previousUserId != null) {
+                TenantContext.setUserId(previousUserId);
+            }
         }
     }
 

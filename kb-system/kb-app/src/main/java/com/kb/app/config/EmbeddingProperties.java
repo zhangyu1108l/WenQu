@@ -2,7 +2,6 @@ package com.kb.app.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 /**
  * 智谱 Embedding 配置属性。
@@ -10,14 +9,21 @@ import org.springframework.stereotype.Component;
  * @author kb-system
  */
 @Data
-@Component
-@ConfigurationProperties(prefix = "spring.ai.zhipu.embedding")
+@ConfigurationProperties(prefix = "zhipu.embedding")
 public class EmbeddingProperties {
 
     /**
      * Embedding 模型名称，固定使用智谱 embedding-3。
      */
+    private String baseUrl;
+
+    private String apiKey;
+
+    private String embeddingsPath = "/embeddings";
+
     private String model = "embedding-3";
+
+    private Integer dimensions = 2048;
 
     /**
      * 批量请求大小，默认每批 16 条。
