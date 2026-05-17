@@ -51,6 +51,8 @@
 
         <!-- 向量数据库 -->
         <milvus.version>2.4.8</milvus.version>
+        <protobuf.version>3.24.0</protobuf.version>
+        <grpc.version>1.59.1</grpc.version>
 
         <!-- 工具 -->
         <lombok.version>1.18.36</lombok.version>
@@ -91,6 +93,21 @@
                 <version>${spring-ai.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- ===== Protobuf / gRPC =====
+                 Keep these aligned with milvus-sdk-java 2.4.8 to avoid runtime ABI conflicts. -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${protobuf.version}</version>
             </dependency>
 
             <!-- ===== 内部子模块 =====
