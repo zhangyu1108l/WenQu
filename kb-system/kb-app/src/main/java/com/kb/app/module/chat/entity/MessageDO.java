@@ -22,8 +22,8 @@ import java.time.LocalDateTime;
  *     <li>1 = AI 回答</li>
  * </ul>
  * <p>
- * sourceChunks：AI 回答时引用的原文 chunk 列表，JSON 格式：
- * [{chunkId, content, headingPath, pageNo, score}]
+ * sourceChunks：AI 回答时引用的原文 chunk 列表，JSON 字符串格式：
+ * [{"chunkId":1,"content":"...","headingPath":"第5章>5.3节","score":0.92}]
  * 前端根据此字段渲染来源引用卡片和段落高亮。用户消息此字段为 NULL。
  * <p>
  * 注意：message 表不包含 tenant_id 字段，
@@ -60,9 +60,12 @@ public class MessageDO {
     private String content;
 
     /**
-     * AI回答时引用的原文chunk列表，JSON格式：
-     * [{chunkId, content, headingPath, pageNo, score}]
-     * 用户消息此字段为 NULL
+     * AI回答时引用的原文chunk列表，JSON字符串格式：
+     * [{"chunkId":1,"content":"...","headingPath":"第5章>5.3节","score":0.92}]
+     * <p>
+     * 这里使用 String 而不是 Object：MyBatis-Plus 对 JSON 字段的处理需要额外 TypeHandler 配置，
+     * 直接存 JSON 字符串最简单可靠，也便于 SSE event:done 与历史消息响应复用同一份来源数据。
+     * 用户消息此字段为 NULL。
      */
     private String sourceChunks;
 

@@ -2,7 +2,12 @@ package com.kb.app.module.chat.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.kb.app.module.chat.entity.MessageDO;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 消息表 Mapper — 对应数据库 message 表。
@@ -25,4 +30,52 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface MessageMapper extends BaseMapper<MessageDO> {
+
+    /**
+     * 查询某个会话的完整消息历史，按创建时间升序返回。
+     * <p>
+     * 用于前端打开会话详情时展示完整上下文；完整历史必须从 MySQL 读取，
+     * 不能依赖 Redis 最近 5 轮滑动窗口。
+     *
+     * @param conversationId 会话ID
+     * @return 该会话下所有消息，按时间升序排列
+     */
+    @Select("""
+            SELECT *
+            FROM message
+            WHERE conversation_id = #{conversationId}
+            ORDER BY created_at ASC, id ASC
+            """)
+    List<MessageDO> selectByConversationId(@Param("conversationId") Long conversationId);
+
+    /**
+     * 查询某个会话最近 N 条消息，按创建时间降序返回。
+     * <p>
+     * 用于 Redis 冷启动重建最近 5 轮历史：先按降序 LIMIT 取最新消息，
+     * 调用方再反转为升序后写入 Redis。
+     *
+     * @param conversationId 会话ID
+     * @param limit          最近消息数量
+     * @return 最近 N 条消息，按时间降序排列
+     */
+    @Select("""
+            SELECT *
+            FROM message
+            WHERE conversation_id = #{conversationId}
+            ORDER BY created_at DESC, id DESC
+            LIMIT #{limit}
+            """)
+    List<MessageDO> selectRecentByConversationId(@Param("conversationId") Long conversationId,
+                                                 @Param("limit") int limit);
+
+    /**
+     * 删除某会话下的所有消息。
+     * <p>
+     * 删除会话时由会话 Service 级联调用，必须先删 message 子记录，再删 conversation 父记录。
+     *
+     * @param conversationId 会话ID
+     * @return 删除的消息数量
+     */
+    @Delete("DELETE FROM message WHERE conversation_id = #{conversationId}")
+    int deleteByConversationId(@Param("conversationId") Long conversationId);
 }
