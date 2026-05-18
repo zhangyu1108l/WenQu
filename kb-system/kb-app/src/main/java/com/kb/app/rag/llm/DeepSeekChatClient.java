@@ -15,7 +15,6 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
@@ -29,8 +28,6 @@ import java.util.function.Consumer;
 @Slf4j
 @Component
 public class DeepSeekChatClient {
-
-    private static final String STREAM_ERROR_PREFIX = "[LLM_STREAM_ERROR] ";
 
     private final ChatClient chatClient;
     private final DeepSeekProperties properties;
@@ -52,8 +49,8 @@ public class DeepSeekChatClient {
      * Spring AI 的 stream().content() 返回 Flux<String> 响应流；blockLast() 会触发订阅，
      * 每收到一个 chunk 就通过 doOnNext 回调给调用方，流结束时自然完成，不需要显式关闭。
      * <p>
-     * 异常处理策略：流式过程中如果出现异常，会先通过 tokenConsumer 通知调用方，再继续抛出异常，
-     * 交由上层 SSE 或 RAG 编排逻辑统一收尾，避免静默失败。
+     * 异常处理策略：流式过程中如果出现异常，直接抛给上层 RAG 编排逻辑统一发送 event:error，
+     * 避免把错误信息混入 event:token。
      *
      * @param prompt        当前 Prompt
      * @param history       最近对话历史，按时间正序传入
@@ -64,7 +61,6 @@ public class DeepSeekChatClient {
             throw new IllegalArgumentException("tokenConsumer 不能为空");
         }
 
-        AtomicBoolean errorNotified = new AtomicBoolean(false);
         try {
             List<Message> messages = buildMessages(prompt, history);
             chatClient.prompt()
@@ -73,10 +69,8 @@ public class DeepSeekChatClient {
                     .stream()
                     .content()
                     .doOnNext(tokenConsumer)
-                    .doOnError(ex -> notifyStreamError(tokenConsumer, ex, errorNotified))
                     .blockLast();
         } catch (Exception ex) {
-            notifyStreamError(tokenConsumer, ex, errorNotified);
             throw new IllegalStateException("DeepSeek 流式对话失败", ex);
         }
     }
@@ -138,16 +132,4 @@ public class DeepSeekChatClient {
         return text == null ? "" : text;
     }
 
-    private void notifyStreamError(Consumer<String> tokenConsumer, Throwable ex, AtomicBoolean errorNotified) {
-        if (!errorNotified.compareAndSet(false, true)) {
-            return;
-        }
-
-        String message = ex == null || ex.getMessage() == null ? "unknown error" : ex.getMessage();
-        try {
-            tokenConsumer.accept(STREAM_ERROR_PREFIX + message);
-        } catch (RuntimeException callbackEx) {
-            log.warn("DeepSeek 流式异常通知回调失败", callbackEx);
-        }
-    }
 }

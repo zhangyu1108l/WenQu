@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * <pre>
  * Redis List: [Q1, A1, Q2, A2, Q3, A3, Q4, A4, Q5, A5]
  *                                                  ↑新消息 RPUSH 追加
- * LTRIM 保留最新20条 → 窗口自动滑动
+ * LTRIM 保留最新10条 → 窗口自动滑动
  * </pre>
  * <p>
  * Redis 仅保存轻量级 {@link ChatMessage} JSON 字符串，完整消息与 source_chunks 仍以 MySQL message 表为准。
@@ -41,7 +41,7 @@ public class ConversationHistoryServiceImpl implements ConversationHistoryServic
 
     private static final String HISTORY_KEY_TEMPLATE = "conv:%d:history";
     private static final int MESSAGE_COUNT_PER_ROUND = 2;
-    private static final int CACHE_MESSAGE_LIMIT = 20;
+    private static final int CACHE_MESSAGE_LIMIT = 10;
     private static final long HISTORY_TTL_SECONDS = 86400L;
 
     private final MessageMapper messageMapper;
@@ -99,7 +99,7 @@ public class ConversationHistoryServiceImpl implements ConversationHistoryServic
      * <p>
      * EXPIRE 续期很重要：活跃会话不应该过期，每次问答都将 TTL 重置为 24 小时。
      * <p>
-     * Redis 保留 20 条而不是 10 条，是为了多留一些容错空间；getWindow 会再按调用方需要的轮数截取。
+     * Redis 保留 10 条，对应最近 5 轮 user + assistant 消息，严格符合架构文档中的滑动窗口定义。
      *
      * @param conversationId 会话ID
      * @param question       用户问题

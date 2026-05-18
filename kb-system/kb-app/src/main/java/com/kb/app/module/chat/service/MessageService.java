@@ -19,9 +19,10 @@ public interface MessageService {
      *
      * @param conversationId 会话ID
      * @param userId         当前用户ID
+     * @param tenantId       当前租户ID
      * @return 会话完整消息列表，按创建时间升序排列
      */
-    List<MessageVO> getMessageList(Long conversationId, Long userId);
+    List<MessageVO> getMessageList(Long conversationId, Long userId, Long tenantId);
 
     /**
      * 异步保存一轮问答消息。

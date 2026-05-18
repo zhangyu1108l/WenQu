@@ -110,13 +110,15 @@ public class ChatController {
      *
      * @param conversationId 会话ID
      * @param userId         当前用户ID，由 Gateway 注入 X-User-Id
+     * @param tenantId       当前租户ID，由 Gateway 注入 X-Tenant-Id
      * @return 消息历史列表
      */
     @GetMapping("/conversations/{id}/messages")
     public Result<List<MessageVO>> getMessageList(
             @PathVariable("id") Long conversationId,
-            @RequestHeader("X-User-Id") Long userId) {
-        List<MessageVO> messages = messageService.getMessageList(conversationId, userId);
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-Tenant-Id") Long tenantId) {
+        List<MessageVO> messages = messageService.getMessageList(conversationId, userId, tenantId);
         return Result.ok(messages);
     }
 

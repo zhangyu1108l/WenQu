@@ -2,16 +2,15 @@ package com.kb.app.rag;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kb.app.module.chat.entity.MessageDO;
-import com.kb.app.module.chat.mapper.MessageMapper;
 import com.kb.app.module.chat.service.ConversationHistoryService;
+import com.kb.app.module.chat.service.MessageService;
 import com.kb.app.rag.dto.ChatMessage;
 import com.kb.app.rag.dto.ChunkResult;
 import com.kb.app.rag.dto.SourceChunkVO;
 import com.kb.app.rag.llm.DeepSeekChatClient;
 import com.kb.app.rag.retrieval.VectorRetriever;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -20,6 +19,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * 完整 RAG 问答链路编排器。
@@ -40,7 +40,6 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class RagChain {
 
     private static final long SSE_TIMEOUT_MILLIS = 180_000L;
@@ -54,8 +53,27 @@ public class RagChain {
     private final VectorRetriever vectorRetriever;
     private final PromptBuilder promptBuilder;
     private final DeepSeekChatClient deepSeekChatClient;
-    private final MessageMapper messageMapper;
+    private final MessageService messageService;
     private final ObjectMapper objectMapper;
+    private final Executor ragExecutor;
+
+    public RagChain(ConversationHistoryService historyService,
+                    QueryRewriter queryRewriter,
+                    VectorRetriever vectorRetriever,
+                    PromptBuilder promptBuilder,
+                    DeepSeekChatClient deepSeekChatClient,
+                    MessageService messageService,
+                    ObjectMapper objectMapper,
+                    @Qualifier("docProcessPool") Executor ragExecutor) {
+        this.historyService = historyService;
+        this.queryRewriter = queryRewriter;
+        this.vectorRetriever = vectorRetriever;
+        this.promptBuilder = promptBuilder;
+        this.deepSeekChatClient = deepSeekChatClient;
+        this.messageService = messageService;
+        this.objectMapper = objectMapper;
+        this.ragExecutor = ragExecutor;
+    }
 
     /**
      * RAG 问答唯一入口，Controller 可直接返回该 SseEmitter 给前端。
@@ -111,11 +129,11 @@ public class RagChain {
                 emitter.send(
                         SseEmitter.event()
                                 .name("done")
-                                .data(toJson(sourceVOs))
+                                .data(toJson(Collections.singletonMap("source_chunks", sourceVOs)))
                 );
 
                 // 步骤7：异步写入 MySQL，生成完成后再写库，不影响流式输出速度。
-                saveMessagesAsync(conversationId, question, fullAnswer.toString(), sourceVOs);
+                messageService.saveAsync(conversationId, question, fullAnswer.toString(), topChunks);
 
                 // 步骤8：更新 Redis 滑动窗口，保证下次改写时能用到最新上下文。
                 historyService.push(conversationId, question, fullAnswer.toString());
@@ -127,7 +145,7 @@ public class RagChain {
                         conversationId, tenantId, userId, ex);
                 sendErrorAndComplete(emitter);
             }
-        });
+        }, ragExecutor);
 
         return emitter;
     }
@@ -164,26 +182,6 @@ public class RagChain {
                         message.isAssistant() ? ROLE_ASSISTANT : ROLE_USER,
                         message.getContent()))
                 .toList();
-    }
-
-    private void saveMessagesAsync(Long conversationId, String question, String answer, List<SourceChunkVO> sourceVOs) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                messageMapper.insert(MessageDO.builder()
-                        .conversationId(conversationId)
-                        .role(ROLE_USER)
-                        .content(question)
-                        .build());
-                messageMapper.insert(MessageDO.builder()
-                        .conversationId(conversationId)
-                        .role(ROLE_ASSISTANT)
-                        .content(answer)
-                        .sourceChunks(toJson(sourceVOs))
-                        .build());
-            } catch (Exception ex) {
-                log.error("RAG消息异步写入MySQL失败，conversationId={}", conversationId, ex);
-            }
-        });
     }
 
     private void sendErrorAndComplete(SseEmitter emitter) {

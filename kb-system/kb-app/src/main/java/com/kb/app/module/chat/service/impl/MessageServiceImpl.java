@@ -23,6 +23,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 消息存储 Service 实现类。
@@ -57,11 +58,12 @@ public class MessageServiceImpl implements MessageService {
      *
      * @param conversationId 会话ID
      * @param userId         当前用户ID
+     * @param tenantId       当前租户ID
      * @return 会话完整消息列表，按创建时间升序排列
      */
     @Override
-    public List<MessageVO> getMessageList(Long conversationId, Long userId) {
-        checkConversationOwnership(conversationId, userId);
+    public List<MessageVO> getMessageList(Long conversationId, Long userId, Long tenantId) {
+        checkConversationOwnership(conversationId, userId, tenantId);
 
         List<MessageDO> messages = messageMapper.selectByConversationId(conversationId);
         return messages.stream()
@@ -116,12 +118,13 @@ public class MessageServiceImpl implements MessageService {
                 conversationId, chunks == null ? 0 : chunks.size());
     }
 
-    private void checkConversationOwnership(Long conversationId, Long userId) {
+    private void checkConversationOwnership(Long conversationId, Long userId, Long tenantId) {
         ConversationDO conversation = conversationMapper.selectById(conversationId);
         if (conversation == null) {
             throw BusinessException.of(6001, "会话不存在");
         }
-        if (!conversation.getUserId().equals(userId)) {
+        if (!Objects.equals(conversation.getUserId(), userId)
+                || !Objects.equals(conversation.getTenantId(), tenantId)) {
             throw BusinessException.of(6002, "无权查看此会话");
         }
     }
