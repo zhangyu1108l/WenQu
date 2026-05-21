@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -63,6 +64,21 @@ public interface AsyncTaskMapper extends BaseMapper<AsyncTaskDO> {
             ORDER BY updated_at ASC, id ASC
             """)
     List<AsyncTaskDO> selectRunningTasks(@Param("taskType") String taskType);
+
+    /**
+     * Query stale RUNNING tasks that have not been updated for longer than the cutoff.
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("""
+            SELECT *
+            FROM async_task
+            WHERE task_type = #{taskType}
+              AND status = 'RUNNING'
+              AND updated_at < #{cutoff}
+            ORDER BY updated_at ASC, id ASC
+            """)
+    List<AsyncTaskDO> selectStaleRunningTasks(@Param("taskType") String taskType,
+                                             @Param("cutoff") LocalDateTime cutoff);
 
     /**
      * 按租户和任务类型分页查询任务列表。

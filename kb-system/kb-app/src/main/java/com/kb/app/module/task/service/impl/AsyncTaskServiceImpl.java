@@ -89,7 +89,8 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                 new LambdaUpdateWrapper<AsyncTaskDO>()
                         .eq(AsyncTaskDO::getId, taskId)
                         .set(AsyncTaskDO::getStatus, TaskStatus.RUNNING.name())
-                        .set(AsyncTaskDO::getProgress, progress));
+                        .set(AsyncTaskDO::getProgress, progress)
+                        .set(AsyncTaskDO::getUpdatedAt, LocalDateTime.now()));
         log.info("任务状态更新：任务ID={}，状态=运行中，进度={}", taskId, progress);
     }
 
@@ -107,7 +108,8 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         asyncTaskMapper.update(null,
                 new LambdaUpdateWrapper<AsyncTaskDO>()
                         .eq(AsyncTaskDO::getId, taskId)
-                        .set(AsyncTaskDO::getProgress, progress));
+                        .set(AsyncTaskDO::getProgress, progress)
+                        .set(AsyncTaskDO::getUpdatedAt, LocalDateTime.now()));
         log.info("任务进度更新：任务ID={}，进度={}", taskId, progress);
     }
 
@@ -125,7 +127,8 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                 new LambdaUpdateWrapper<AsyncTaskDO>()
                         .eq(AsyncTaskDO::getId, taskId)
                         .set(AsyncTaskDO::getStatus, TaskStatus.DONE.name())
-                        .set(AsyncTaskDO::getProgress, 100));
+                        .set(AsyncTaskDO::getProgress, 100)
+                        .set(AsyncTaskDO::getUpdatedAt, LocalDateTime.now()));
         log.info("任务已完成：任务ID={}", taskId);
     }
 
@@ -148,7 +151,8 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                 new LambdaUpdateWrapper<AsyncTaskDO>()
                         .eq(AsyncTaskDO::getId, taskId)
                         .set(AsyncTaskDO::getStatus, TaskStatus.FAILED.name())
-                        .set(AsyncTaskDO::getErrorMsg, truncatedMsg));
+                        .set(AsyncTaskDO::getErrorMsg, truncatedMsg)
+                        .set(AsyncTaskDO::getUpdatedAt, LocalDateTime.now()));
         log.error("任务失败：任务ID={}，错误信息={}", taskId, truncatedMsg);
     }
 
@@ -200,15 +204,11 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         int failedCount = 0;
 
         for (TaskType taskType : TaskType.values()) {
-            List<AsyncTaskDO> runningTasks = asyncTaskMapper.selectRunningTasks(taskType.name());
+            List<AsyncTaskDO> runningTasks = asyncTaskMapper.selectStaleRunningTasks(taskType.name(), cutoff);
             checkedCount += runningTasks.size();
 
             for (AsyncTaskDO task : runningTasks) {
                 LocalDateTime updatedAt = task.getUpdatedAt();
-                if (updatedAt != null && !updatedAt.isBefore(cutoff)) {
-                    continue;
-                }
-
                 failWithTaskTenant(task, STALE_TASK_ERROR_MSG);
                 failedCount++;
                 log.warn("RUNNING 超时任务已标记失败：任务ID={}，任务类型={}，业务ID={}，租户ID={}，最后更新时间={}",
