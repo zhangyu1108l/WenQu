@@ -21,9 +21,9 @@
         >
           <span class="conversation-title">{{ getConversationTitle(conversation) }}</span>
           <el-popconfirm
-            title="确认删除该对话？"
-            confirm-button-text="删除"
             cancel-button-text="取消"
+            confirm-button-text="删除"
+            title="确认删除该对话？"
             width="180"
             @confirm="handleDeleteConversation(getConversationId(conversation))"
           >
@@ -45,16 +45,12 @@
           <h2>{{ currentConversationTitle }}</h2>
         </header>
 
-        <div
-          ref="messageListRef"
-          class="message-list"
-          data-chat-message-list
-        >
+        <div ref="messageListRef" class="message-list" data-chat-message-list>
           <MessageBubble
             v-for="(message, index) in chatStore.messages"
             :key="message.id || `${index}-${message.role}`"
-            :message="message"
             :is-streaming="isStreamingMessage(index, message)"
+            :message="message"
           />
         </div>
 
@@ -62,19 +58,19 @@
           <el-input
             v-model="inputText"
             class="composer-input"
-            type="textarea"
             :autosize="{ minRows: 1, maxRows: 6 }"
-            resize="none"
-            maxlength="500"
-            show-word-limit
-            placeholder="输入你的问题"
             :disabled="chatStore.isGenerating"
+            maxlength="500"
+            placeholder="输入你的问题"
+            resize="none"
+            show-word-limit
+            type="textarea"
             @keydown="handleInputKeydown"
           />
           <el-button
             class="composer-action"
-            :type="chatStore.isGenerating ? 'danger' : 'primary'"
             :disabled="!chatStore.isGenerating && !inputText.trim()"
+            :type="chatStore.isGenerating ? 'danger' : 'primary'"
             @click="handleComposerAction"
           >
             <el-icon>
@@ -86,12 +82,11 @@
         </footer>
       </template>
 
-      <!-- 空状态展示逻辑：当没有任何会话或尚未选中会话时，显示居中欢迎引导，提示用户先新建对话。 -->
       <div v-else class="empty-state">
-        <h2>👋 欢迎使用问渠</h2>
-        <p>上传文档后，即可开始智能问答</p>
+        <h2>开始一次知识库问答</h2>
+        <p>选择已有会话，或新建对话后提问。</p>
         <el-button type="primary" @click="handleCreateConversation">
-          新建对话 →
+          新建对话
         </el-button>
       </div>
     </section>
@@ -134,7 +129,9 @@ const currentConversationTitle = computed(() =>
 const hasActiveConversation = computed(() => Boolean(chatStore.currentConvId));
 
 const isStreamingMessage = (index, message) =>
-  chatStore.isGenerating && index === chatStore.messages.length - 1 && (message?.role === 1 || message?.role === 'assistant');
+  chatStore.isGenerating &&
+  index === chatStore.messages.length - 1 &&
+  (message?.role === 1 || message?.role === 'assistant');
 
 const handleCreateConversation = async () => {
   if (chatStore.isGenerating) {
@@ -171,8 +168,7 @@ const handleDeleteConversation = async (convId) => {
 
   await chatApi.deleteConversation(convId);
   const conversations = await chatStore.loadConversations();
-  const nextConversation = conversations[0];
-  const nextConversationId = getConversationId(nextConversation);
+  const nextConversationId = getConversationId(conversations[0]);
 
   if (nextConversationId) {
     await chatStore.selectConversation(nextConversationId);
@@ -203,12 +199,7 @@ const handleComposerAction = () => {
 };
 
 const handleInputKeydown = (event) => {
-  if (event.key !== 'Enter') {
-    return;
-  }
-
-  // Enter 发送、Shift+Enter 换行通过 keydown 事件判断 event.shiftKey；发送时阻止默认行为，避免 textarea 插入换行。
-  if (!event.shiftKey) {
+  if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     handleSend();
   }
@@ -270,10 +261,10 @@ onMounted(async () => {
   gap: 8px;
   border: 0;
   border-radius: 8px;
-  padding: 0 8px 0 12px;
-  color: var(--color-text-primary);
   background: transparent;
+  color: var(--color-text-primary);
   cursor: pointer;
+  padding: 0 8px 0 12px;
   text-align: left;
   transition: background-color 0.16s ease, color 0.16s ease;
 }
@@ -305,7 +296,6 @@ onMounted(async () => {
   border-radius: 6px;
   color: var(--color-text-secondary);
   opacity: 0;
-  transition: color 0.16s ease, background-color 0.16s ease, opacity 0.16s ease;
 }
 
 .conversation-item:hover .delete-trigger,
@@ -399,7 +389,7 @@ onMounted(async () => {
 .empty-state h2 {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   line-height: 1.25;
 }
@@ -412,10 +402,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
-  .chat-view {
-    min-height: 100vh;
-  }
-
   .conversation-panel {
     width: 220px;
     flex-basis: 220px;

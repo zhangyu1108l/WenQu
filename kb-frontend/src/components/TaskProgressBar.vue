@@ -20,16 +20,16 @@ import * as taskApi from '../api/task';
 
 const props = defineProps({
   taskId: {
-    type: Number,
+    type: [Number, String],
     required: true
   },
   docId: {
-    type: Number,
+    type: [Number, String],
     default: null
   }
 });
 
-const emit = defineEmits(['done', 'failed']);
+const emit = defineEmits(['done', 'failed', 'progress']);
 
 const percentage = ref(0);
 const currentStatus = ref('PENDING');
@@ -50,10 +50,6 @@ const progressStatus = computed(() => {
 });
 
 const statusText = computed(() => {
-  if (currentStatus.value === 'PENDING') {
-    return '等待处理...';
-  }
-
   if (currentStatus.value === 'RUNNING') {
     return '处理中...';
   }
@@ -71,7 +67,7 @@ const statusText = computed(() => {
 
 const stopPolling = () => {
   if (timerId) {
-    clearInterval(timerId);
+    window.clearInterval(timerId);
     timerId = null;
   }
 };
@@ -86,26 +82,20 @@ const pollTaskStatus = async () => {
   try {
     const result = await taskApi.getTaskStatus(props.taskId);
     const status = result?.status || 'PENDING';
+    const progress = Math.max(0, Math.min(Number(result?.progress) || 0, 100));
 
     currentStatus.value = status;
-
-    if (status === 'PENDING') {
-      percentage.value = 0;
-      errorMsg.value = '';
-      return;
-    }
-
-    if (status === 'RUNNING') {
-      percentage.value = Math.max(0, Math.min(Number(result?.progress) || 0, 100));
-      errorMsg.value = '';
-      return;
-    }
+    percentage.value = status === 'DONE' ? 100 : progress;
+    errorMsg.value = result?.errorMsg || result?.error_msg || '';
+    emit('progress', {
+      taskId: props.taskId,
+      docId: props.docId,
+      status,
+      progress: percentage.value
+    });
 
     if (status === 'DONE') {
-      percentage.value = 100;
-      errorMsg.value = '';
       stopPolling();
-      // emit('done') 让父组件在任务完成后刷新文档列表，把文档状态更新为可用。
       emit('done', {
         taskId: props.taskId,
         docId: props.docId
@@ -114,12 +104,11 @@ const pollTaskStatus = async () => {
     }
 
     if (status === 'FAILED') {
-      errorMsg.value = result?.errorMsg || '处理失败';
       stopPolling();
       emit('failed', {
         taskId: props.taskId,
         docId: props.docId,
-        errorMsg: errorMsg.value
+        errorMsg: errorMsg.value || '处理失败'
       });
     }
   } catch (error) {
@@ -135,7 +124,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  // 轮询和 onUnmounted 必须配合使用：组件销毁后定时器若继续运行，会造成内存泄漏和无意义的接口请求。
   stopPolling();
 });
 </script>

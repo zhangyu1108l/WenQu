@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isSuperAdmin" class="tenant-manage-view">
+  <div class="tenant-manage-view">
     <header class="page-toolbar">
       <h2>租户管理</h2>
 
@@ -25,7 +25,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="标识Code" min-width="180">
+        <el-table-column label="标识 Code" min-width="180">
           <template #default="{ row }">
             <span class="tenant-code">{{ row.code || '-' }}</span>
           </template>
@@ -47,7 +47,6 @@
 
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <!-- 禁用租户后该租户所有用户无法登录，因此状态切换前必须二次确认。 -->
             <el-popconfirm
               cancel-button-text="取消"
               confirm-button-text="确认"
@@ -85,11 +84,19 @@
         label-position="top"
       >
         <el-form-item label="租户名称" prop="name">
-          <el-input v-model.trim="createForm.name" maxlength="100" placeholder="请输入租户名称" />
+          <el-input
+            v-model.trim="createForm.name"
+            maxlength="100"
+            placeholder="请输入租户名称"
+          />
         </el-form-item>
 
-        <el-form-item label="租户标识Code" prop="code">
-          <el-input v-model.trim="createForm.code" maxlength="50" placeholder="例如 acme-tech" />
+        <el-form-item label="租户标识 Code" prop="code">
+          <el-input
+            v-model.trim="createForm.code"
+            maxlength="50"
+            placeholder="例如 acme-tech"
+          />
         </el-form-item>
 
         <el-form-item label="初始管理员用户名" prop="adminUsername">
@@ -113,7 +120,7 @@
 
       <template #footer>
         <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="createSubmitting" @click="submitCreateTenant">
+        <el-button :loading="createSubmitting" type="primary" @click="submitCreateTenant">
           创建
         </el-button>
       </template>
@@ -122,22 +129,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
 import * as adminApi from '../api/admin';
-import { useAuthStore } from '../stores/auth';
-
-const ROLE_VALUE_MAP = {
-  SUPER_ADMIN: 0,
-  TENANT_ADMIN: 1,
-  USER: 2
-};
-
-const router = useRouter();
-const authStore = useAuthStore();
 
 const loading = ref(false);
 const tenantList = ref([]);
@@ -153,41 +149,20 @@ const createForm = reactive({
   adminPassword: ''
 });
 
-// 租户标识只允许小写英文、数字、短横线，与 MinIO Bucket 命名规则 tenant-{tenantId} 保持一致。
 const tenantCodePattern = /^[a-z0-9-]+$/;
 
 const createRules = {
   name: [{ required: true, message: '请输入租户名称', trigger: 'blur' }],
   code: [
-    { required: true, message: '请输入租户标识Code', trigger: 'blur' },
+    { required: true, message: '请输入租户标识 Code', trigger: 'blur' },
     {
       pattern: tenantCodePattern,
-      message: '只允许小写英文、数字、短横线',
+      message: '仅允许小写英文、数字、短横线',
       trigger: 'blur'
     }
   ],
   adminUsername: [{ required: true, message: '请输入初始管理员用户名', trigger: 'blur' }],
   adminPassword: [{ required: true, message: '请输入初始管理员密码', trigger: 'blur' }]
-};
-
-const currentRole = computed(() => normalizeRole(authStore.userInfo?.role));
-const isSuperAdmin = computed(() => currentRole.value === 0);
-
-const normalizeRole = (role) => {
-  if (role === null || role === undefined || role === '') {
-    return null;
-  }
-
-  if (typeof role === 'number') {
-    return role;
-  }
-
-  if (ROLE_VALUE_MAP[role] !== undefined) {
-    return ROLE_VALUE_MAP[role];
-  }
-
-  const numberRole = Number(role);
-  return Number.isNaN(numberRole) ? null : numberRole;
 };
 
 const normalizeList = (data) => {
@@ -218,7 +193,7 @@ const getNextTenantStatus = (row) => (isTenantEnabled(row) ? 0 : 1);
 
 const getTenantStatusConfirmTitle = (row) =>
   isTenantEnabled(row)
-    ? `确认禁用租户 ${row.name || row.code || ''}？禁用后该租户所有用户无法登录。`
+    ? `确认禁用租户 ${row.name || row.code || ''}？禁用后该租户用户将无法登录。`
     : `确认启用租户 ${row.name || row.code || ''}？`;
 
 const preventDirectSwitchChange = () => false;
@@ -284,12 +259,6 @@ const confirmTenantStatus = async (row) => {
 };
 
 onMounted(() => {
-  if (!isSuperAdmin.value) {
-    ElMessage.warning('仅超级管理员可访问租户管理');
-    router.replace('/chat');
-    return;
-  }
-
   loadTenants();
 });
 </script>
@@ -303,7 +272,7 @@ onMounted(() => {
 }
 
 .page-toolbar {
-  height: 68px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -323,8 +292,8 @@ onMounted(() => {
 .table-wrap {
   min-height: 0;
   flex: 1;
-  padding: 0 28px;
   overflow: auto;
+  padding: 0 28px;
 }
 
 .table-wrap :deep(.el-table) {
@@ -366,7 +335,6 @@ onMounted(() => {
   }
 
   .page-toolbar {
-    height: auto;
     align-items: flex-start;
     flex-direction: column;
     padding-top: 16px;

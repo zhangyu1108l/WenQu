@@ -13,35 +13,49 @@ export function useTaskPoller() {
     timers.delete(timer);
   };
 
-  const pollTask = (taskId, onDone, onFailed) => {
+  const pollTask = (taskId, onDone, onFailed, onProgress) => {
     if (!taskId) {
       return () => {};
     }
 
-    const timer = setInterval(async () => {
+    let requestPending = false;
+    let timer = null;
+
+    const tick = async () => {
+      if (requestPending) {
+        return;
+      }
+
+      requestPending = true;
+
       try {
         const result = await taskApi.getTaskStatus(taskId);
         const status = result?.status;
 
+        onProgress?.(result);
+
         if (status === 'DONE') {
           clearTimer(timer);
-          onDone?.();
+          onDone?.(result);
           return;
         }
 
         if (status === 'FAILED') {
           clearTimer(timer);
-          onFailed?.(result?.errorMsg || result?.error_msg || '任务执行失败');
+          onFailed?.(result?.errorMsg || result?.error_msg || '任务执行失败', result);
         }
       } catch (error) {
         clearTimer(timer);
         onFailed?.(error?.message || '任务状态查询失败');
+      } finally {
+        requestPending = false;
       }
-    }, 2000);
+    };
 
+    timer = window.setInterval(tick, 2000);
     timers.add(timer);
+    tick();
 
-    // 返回清理函数，供组件卸载时主动停止轮询，避免定时器在页面离开后继续请求接口。
     return () => clearTimer(timer);
   };
 

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isAllowed" class="user-manage-view">
+  <div class="user-manage-view">
     <header class="page-toolbar">
       <h2>用户管理</h2>
     </header>
@@ -18,7 +18,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="角色" width="140">
+        <el-table-column label="角色" width="150">
           <template #default="{ row }">
             <el-tag :type="getRoleTagType(getUserRole(row))" effect="light">
               {{ getRoleLabel(getUserRole(row)) }}
@@ -88,17 +88,10 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
 import * as adminApi from '../api/admin';
-import { useAuthStore } from '../stores/auth';
-
-const ROLE_VALUE_MAP = {
-  SUPER_ADMIN: 0,
-  TENANT_ADMIN: 1,
-  USER: 2
-};
+import { normalizeRole, useAuthStore } from '../stores/auth';
 
 const ROLE_LABEL_MAP = {
   0: '超级管理员',
@@ -117,7 +110,6 @@ const editableRoleOptions = [
   { label: '普通用户', value: 2 }
 ];
 
-const router = useRouter();
 const authStore = useAuthStore();
 
 const loading = ref(false);
@@ -125,33 +117,11 @@ const userList = ref([]);
 const roleDraftMap = reactive({});
 const roleSubmittingMap = reactive({});
 
-const currentRole = computed(() => normalizeRole(authStore.userInfo?.role));
 const currentUserId = computed(() => authStore.userInfo?.userId ?? authStore.userInfo?.id);
-const isAllowed = computed(() => currentRole.value === 0 || currentRole.value === 1);
 
 const visibleUsers = computed(() =>
-  userList.value.filter((user) => {
-    // 超级管理员不在此列表中：前端再次过滤 role=0，避免租户管理员误操作超级管理员账号。
-    return getUserRole(user) !== 0;
-  })
+  userList.value.filter((user) => getUserRole(user) !== 0)
 );
-
-const normalizeRole = (role) => {
-  if (role === null || role === undefined || role === '') {
-    return null;
-  }
-
-  if (typeof role === 'number') {
-    return role;
-  }
-
-  if (ROLE_VALUE_MAP[role] !== undefined) {
-    return ROLE_VALUE_MAP[role];
-  }
-
-  const numberRole = Number(role);
-  return Number.isNaN(numberRole) ? null : numberRole;
-};
 
 const normalizeList = (data) => {
   if (Array.isArray(data)) {
@@ -203,7 +173,8 @@ const getRoleLabel = (role) => ROLE_LABEL_MAP[normalizeRole(role)] || '未知角
 
 const getRoleTagType = (role) => ROLE_TAG_TYPE_MAP[normalizeRole(role)] || 'info';
 
-const isEnabled = (status) => status === 1 || status === true || status === '1' || status === 'ENABLED';
+const isEnabled = (status) =>
+  status === 1 || status === true || status === '1' || status === 'ENABLED';
 
 const formatDateTime = (value) => {
   if (!value) {
@@ -221,7 +192,6 @@ const isSelf = (row) => {
     return false;
   }
 
-  // 禁止修改自己的角色：当前用户 ID 与行记录 ID 相同则禁用角色下拉和提交按钮，避免把自己降权后失去管理入口。
   return String(rowUserId) === String(currentUserId.value);
 };
 
@@ -238,7 +208,7 @@ const handleRoleSelect = (row, nextRole) => {
 const hasRoleChanged = (row) => getDraftRole(row) !== getUserRole(row);
 
 const getRoleConfirmTitle = (row) =>
-  `确认将 ${getUsername(row)} 的角色修改为${getRoleLabel(getDraftRole(row))}？`;
+  `确认将 ${getUsername(row)} 的角色修改为 ${getRoleLabel(getDraftRole(row))}？`;
 
 const cancelRoleChange = (row) => {
   const userId = getUserId(row);
@@ -268,12 +238,6 @@ const confirmRoleChange = async (row) => {
 };
 
 onMounted(() => {
-  if (!isAllowed.value) {
-    ElMessage.warning('仅管理员可访问用户管理');
-    router.replace('/chat');
-    return;
-  }
-
   loadUsers();
 });
 </script>
@@ -287,7 +251,7 @@ onMounted(() => {
 }
 
 .page-toolbar {
-  height: 68px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -307,8 +271,8 @@ onMounted(() => {
 .table-wrap {
   min-height: 0;
   flex: 1;
-  padding: 0 28px;
   overflow: auto;
+  padding: 0 28px;
 }
 
 .table-wrap :deep(.el-table) {
@@ -347,7 +311,6 @@ onMounted(() => {
   }
 
   .page-toolbar {
-    height: auto;
     align-items: flex-start;
     flex-direction: column;
     padding-top: 16px;

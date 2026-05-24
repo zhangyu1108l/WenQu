@@ -13,7 +13,7 @@ const toPageData = (data) => {
 
   return {
     list,
-    total: data?.total ?? list.length
+    total: data?.total ?? data?.totalCount ?? list.length
   };
 };
 
@@ -21,7 +21,6 @@ export const useDocumentStore = defineStore('document', {
   state: () => ({
     docList: [],
     total: 0,
-    // 用 Map 而不是 Array 存储上传任务：Map 根据 taskId 查找是 O(1)，Array 需要遍历。
     uploadingTasks: new Map()
   }),
 
@@ -37,22 +36,21 @@ export const useDocumentStore = defineStore('document', {
     },
 
     startUploadTask(docId, taskId) {
-      // 上传接口返回 taskId 后调用此方法开始追踪该文档处理任务。
-      this.uploadingTasks.set(taskId, {
-        docId,
+      this.uploadingTasks.set(Number(taskId), {
+        docId: Number(docId),
         progress: 0,
         status: 'PENDING'
       });
     },
 
     updateTaskProgress(taskId, status, progress) {
-      const task = this.uploadingTasks.get(taskId);
+      const task = this.uploadingTasks.get(Number(taskId));
 
       if (!task) {
         return;
       }
 
-      this.uploadingTasks.set(taskId, {
+      this.uploadingTasks.set(Number(taskId), {
         ...task,
         status,
         progress
@@ -60,7 +58,7 @@ export const useDocumentStore = defineStore('document', {
     },
 
     removeTask(taskId) {
-      this.uploadingTasks.delete(taskId);
+      this.uploadingTasks.delete(Number(taskId));
     }
   }
 });

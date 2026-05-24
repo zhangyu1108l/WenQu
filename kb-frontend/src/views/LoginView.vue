@@ -18,21 +18,20 @@
         @keyup.enter="handleLogin"
       >
         <el-form-item label="租户标识" prop="tenantCode">
-          <!-- tenantCode 是租户唯一标识：多租户系统中，不同公司使用不同 code 登录。 -->
           <el-input
             v-model.trim="loginForm.tenantCode"
-            placeholder="公司标识"
-            size="large"
             clearable
+            placeholder="例如 acme-tech"
+            size="large"
           />
         </el-form-item>
 
         <el-form-item label="用户名" prop="username">
           <el-input
             v-model.trim="loginForm.username"
+            clearable
             placeholder="请输入用户名"
             size="large"
-            clearable
           />
         </el-form-item>
 
@@ -40,24 +39,24 @@
           <el-input
             v-model="loginForm.password"
             placeholder="请输入密码"
-            type="password"
-            size="large"
             show-password
+            size="large"
+            type="password"
           />
         </el-form-item>
 
         <el-button
           class="login-button"
-          type="primary"
-          size="large"
           :loading="loading"
+          size="large"
+          type="primary"
           @click="handleLogin"
         >
           登录
         </el-button>
       </el-form>
 
-      <footer class="login-footer">© 2026 问渠 WenQu</footer>
+      <footer class="login-footer">WenQu 2026</footer>
     </section>
   </main>
 </template>
@@ -81,17 +80,14 @@ const loginForm = reactive({
 });
 
 const loginRules = {
-  // 必填：租户标识用于定位当前登录用户所属公司，缺失时无法完成租户隔离。
-  tenantCode: [{ required: true, message: '请输入公司标识', trigger: 'blur' }],
-  // 必填与长度限制：用户名是租户内登录身份，2~20 字符避免无效账号与异常长输入。
+  tenantCode: [{ required: true, message: '请输入租户标识', trigger: 'blur' }],
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 2, max: 20, message: '用户名长度为 2~20 个字符', trigger: 'blur' }
+    { min: 2, max: 50, message: '用户名长度为 2-50 个字符', trigger: 'blur' }
   ],
-  // 必填与长度限制：密码用于身份校验，6~20 字符符合当前账号密码策略。
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 20, message: '密码长度为 6~20 个字符', trigger: 'blur' }
+    { min: 6, max: 64, message: '密码长度为 6-64 个字符', trigger: 'blur' }
   ]
 };
 
@@ -113,11 +109,8 @@ const handleLogin = async () => {
       username: loginForm.username,
       password: loginForm.password
     });
-
-    // 登录成功后统一跳转到 /chat；普通用户和管理员先进入对话页，后续通过 role 控制菜单显示。
     router.push('/chat');
   } catch (error) {
-    // 登录失败时使用 Element Plus 的 ElMessage.error 进行页面提示，展示后端错误信息或通用文案。
     ElMessage.error(error?.message || '登录失败，请检查账号信息');
   } finally {
     loading.value = false;
@@ -137,11 +130,10 @@ const handleLogin = async () => {
 
 .login-card {
   width: min(400px, 100%);
-  padding: 40px 36px 28px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-bg-primary);
-  box-shadow: 0 18px 48px rgba(13, 13, 13, 0.08);
+  padding: 40px 36px 28px;
 }
 
 .login-header {
@@ -180,21 +172,9 @@ const handleLogin = async () => {
   line-height: 1.4;
 }
 
-.login-form {
-  width: 100%;
-}
-
 .login-button {
   width: 100%;
   margin-top: 4px;
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.login-button:hover,
-.login-button:focus {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
 }
 
 .login-footer {
@@ -208,10 +188,6 @@ const handleLogin = async () => {
 @media (max-width: 480px) {
   .login-card {
     padding: 32px 24px 24px;
-  }
-
-  .login-header {
-    margin-bottom: 28px;
   }
 }
 </style>

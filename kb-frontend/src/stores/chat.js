@@ -18,7 +18,6 @@ export const useChatStore = defineStore('chat', {
     currentConvId: null,
     messages: [],
     isGenerating: false,
-    // streamingContent 独立保存正在生成的内容，UI 可优先绑定它，避免频繁替换 messages 数组引发大量重渲染。
     streamingContent: '',
     sourceChunks: []
   }),
@@ -76,8 +75,7 @@ export const useChatStore = defineStore('chat', {
       this.streamingContent += token;
 
       const lastMessage = this.messages[this.messages.length - 1];
-      if (lastMessage && lastMessage.role === 1) {
-        // appendToken 时同时更新 streamingContent 和末尾 assistant 占位消息，保证 UI 实时渲染且消息历史保持一致。
+      if (lastMessage && (lastMessage.role === 1 || lastMessage.role === 'assistant')) {
         lastMessage.content = this.streamingContent;
       }
     },
@@ -87,8 +85,18 @@ export const useChatStore = defineStore('chat', {
       this.sourceChunks = Array.isArray(chunks) ? chunks : [];
 
       const lastMessage = this.messages[this.messages.length - 1];
-      if (lastMessage && lastMessage.role === 1) {
+      if (lastMessage && (lastMessage.role === 1 || lastMessage.role === 'assistant')) {
         lastMessage.sourceChunks = this.sourceChunks;
+        lastMessage.source_chunks = this.sourceChunks;
+      }
+    },
+
+    failStreaming(message = '回答生成失败') {
+      this.isGenerating = false;
+
+      const lastMessage = this.messages[this.messages.length - 1];
+      if (lastMessage && (lastMessage.role === 1 || lastMessage.role === 'assistant') && !lastMessage.content) {
+        lastMessage.content = message;
       }
     }
   }

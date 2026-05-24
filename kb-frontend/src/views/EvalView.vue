@@ -1,22 +1,24 @@
 <template>
-  <div v-if="isAllowed" class="eval-view">
+  <div class="eval-view">
     <header class="eval-toolbar">
-      <h2>Ragas 评估中心</h2>
+      <h2>Ragas 评估</h2>
+      <el-button :loading="evalRunning" type="primary" @click="handleRunEval">
+        <el-icon v-if="!evalRunning">
+          <VideoPlay />
+        </el-icon>
+        <span>{{ evalRunning ? '评估中...' : '运行评估' }}</span>
+      </el-button>
     </header>
+
+    <section v-if="evalRunning" class="eval-progress">
+      <el-progress :percentage="evalProgress" :stroke-width="8" />
+      <span>{{ evalStatusText }}</span>
+    </section>
 
     <section class="eval-content">
       <el-tabs v-model="activeTab" class="eval-tabs">
         <el-tab-pane label="评估用例" name="cases">
           <div class="tab-panel">
-            <div class="action-bar">
-              <el-button type="primary" :loading="evalRunning" @click="handleRunEval">
-                <el-icon v-if="!evalRunning">
-                  <VideoPlay />
-                </el-icon>
-                <span>{{ evalRunning ? '评估中...' : '运行全量评估' }}</span>
-              </el-button>
-            </div>
-
             <el-collapse v-model="caseFormCollapse" class="case-create-collapse">
               <el-collapse-item title="新增用例" name="create">
                 <el-form
@@ -49,8 +51,8 @@
 
                   <div class="form-actions">
                     <el-button
-                      type="primary"
                       :loading="caseSubmitting"
+                      type="primary"
                       @click="submitCase"
                     >
                       <el-icon v-if="!caseSubmitting">
@@ -148,7 +150,7 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column label="四项均值得分" min-width="430">
+                <el-table-column label="四项均值得分" min-width="560">
                   <template #default="{ row }">
                     <div class="score-list">
                       <span
@@ -158,9 +160,9 @@
                       >
                         <span class="score-name">{{ metric.label }}</span>
                         <el-tag
-                          :type="getScoreTagType(getMetricValue(row, metric.avgKeys))"
                           effect="light"
                           size="small"
+                          :type="getScoreTagType(getMetricValue(row, metric.avgKeys))"
                         >
                           {{ formatScore(getMetricValue(row, metric.avgKeys)) }}
                         </el-tag>
@@ -192,11 +194,7 @@
       </el-tabs>
     </section>
 
-    <el-dialog
-      v-model="detailDialogVisible"
-      title="批次详情"
-      width="1080px"
-    >
+    <el-dialog v-model="detailDialogVisible" title="批次详情" width="1080px">
       <section v-loading="detailLoading" class="detail-body">
         <div class="metric-grid">
           <article
@@ -205,6 +203,7 @@
             class="metric-card"
           >
             <span class="metric-name">{{ metric.label }}</span>
+            <small>{{ metric.description }}</small>
             <strong>{{ formatScore(metric.value) }}</strong>
             <el-progress
               :percentage="getScorePercentage(metric.value)"
@@ -237,12 +236,12 @@
             v-for="metric in metrics"
             :key="metric.key"
             :label="metric.label"
-            min-width="150"
+            min-width="170"
           >
             <template #default="{ row }">
               <el-tag
-                :type="getScoreTagType(getMetricValue(row, metric.scoreKeys))"
                 effect="light"
+                :type="getScoreTagType(getMetricValue(row, metric.scoreKeys))"
               >
                 {{ formatScore(getMetricValue(row, metric.scoreKeys)) }}
               </el-tag>
@@ -256,19 +255,11 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Delete, Plus, VideoPlay, View } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
 import * as evalApi from '../api/eval';
 import { useTaskPoller } from '../composables/useTaskPoller';
-import { useAuthStore } from '../stores/auth';
-
-const ROLE_VALUE_MAP = {
-  SUPER_ADMIN: 0,
-  TENANT_ADMIN: 1,
-  USER: 2
-};
 
 const STATUS_LABEL_MAP = {
   PENDING: '待评估',
@@ -284,8 +275,6 @@ const STATUS_TAG_TYPE_MAP = {
   FAILED: 'danger'
 };
 
-const router = useRouter();
-const authStore = useAuthStore();
 const { pollTask } = useTaskPoller();
 
 const activeTab = ref('cases');
@@ -296,6 +285,8 @@ const batchLoading = ref(false);
 const detailLoading = ref(false);
 const caseSubmitting = ref(false);
 const evalRunning = ref(false);
+const evalProgress = ref(0);
+const evalStatusText = ref('等待任务开始');
 const detailDialogVisible = ref(false);
 const caseList = ref([]);
 const batchList = ref([]);
@@ -315,38 +306,35 @@ const caseRules = {
 };
 
 const metrics = [
-  // Faithfulness（忠实度）：AI回答是否忠实于检索内容。
   {
     key: 'faithfulness',
-    label: 'Faithfulness',
+    label: 'Faithfulness（忠实度）',
+    description: '回答是否忠实于检索内容',
     avgKeys: ['avgFaithfulness', 'avg_faithfulness'],
     scoreKeys: ['faithfulness']
   },
-  // Answer Relevancy（相关性）：AI回答是否切题。
   {
     key: 'answerRelevancy',
-    label: 'Answer Relevancy',
+    label: 'Answer Relevancy（切题度）',
+    description: '回答是否切中问题',
     avgKeys: ['avgAnswerRelevancy', 'avg_answer_relevancy'],
     scoreKeys: ['answerRelevancy', 'answer_relevancy']
   },
-  // Context Recall（召回率）：标准答案是否被检索覆盖。
   {
     key: 'contextRecall',
-    label: 'Context Recall',
+    label: 'Context Recall（召回率）',
+    description: '标准答案是否被检索内容覆盖',
     avgKeys: ['avgContextRecall', 'avg_context_recall'],
     scoreKeys: ['contextRecall', 'context_recall']
   },
-  // Context Precision（精准度）：检索内容是否都有用。
   {
     key: 'contextPrecision',
-    label: 'Context Precision',
+    label: 'Context Precision（精确率）',
+    description: '检索内容是否有效',
     avgKeys: ['avgContextPrecision', 'avg_context_precision'],
     scoreKeys: ['contextPrecision', 'context_precision']
   }
 ];
-
-const currentRole = computed(() => normalizeRole(authStore.userInfo?.role));
-const isAllowed = computed(() => currentRole.value === 0 || currentRole.value === 1);
 
 const detailMetricCards = computed(() =>
   metrics.map((metric) => ({
@@ -354,23 +342,6 @@ const detailMetricCards = computed(() =>
     value: getMetricValue(selectedBatch.value, metric.avgKeys)
   }))
 );
-
-const normalizeRole = (role) => {
-  if (role === null || role === undefined || role === '') {
-    return null;
-  }
-
-  if (typeof role === 'number') {
-    return role;
-  }
-
-  if (ROLE_VALUE_MAP[role] !== undefined) {
-    return ROLE_VALUE_MAP[role];
-  }
-
-  const numberRole = Number(role);
-  return Number.isNaN(numberRole) ? null : numberRole;
-};
 
 const normalizeList = (data) => {
   if (Array.isArray(data)) {
@@ -410,7 +381,10 @@ const getCaseId = (row) => row?.id ?? row?.caseId ?? row?.case_id;
 const getBatchId = (row) => row?.id ?? row?.batchId ?? row?.batch_id;
 
 const getResultId = (row) =>
-  row?.id ?? row?.resultId ?? row?.result_id ?? `${row?.batchId || row?.batch_id || ''}-${row?.evalCaseId || row?.eval_case_id || ''}`;
+  row?.id ??
+  row?.resultId ??
+  row?.result_id ??
+  `${row?.batchId || row?.batch_id || ''}-${row?.evalCaseId || row?.eval_case_id || ''}`;
 
 const getQuestion = (row) => row?.question || '-';
 
@@ -446,7 +420,6 @@ const getScoreTagType = (value) => {
     return 'info';
   }
 
-  // 指标颜色阈值来自 Ragas 业界经验：>= 0.8 为绿色优秀，0.6~0.8 为橙色可关注，< 0.6 为红色且通常需要优化分块策略。
   if (score >= 0.8) {
     return 'success';
   }
@@ -579,6 +552,8 @@ const handleRunEval = async () => {
   }
 
   evalRunning.value = true;
+  evalProgress.value = 0;
+  evalStatusText.value = '等待任务开始';
   stopEvalPoll?.();
   stopEvalPoll = null;
 
@@ -592,19 +567,26 @@ const handleRunEval = async () => {
       return;
     }
 
-    // 评估会执行完整 RAG 与 Ragas 指标计算，属于耗时异步任务；前端通过 taskId 轮询 async_task 状态来感知完成或失败。
     stopEvalPoll = pollTask(
       taskId,
       async () => {
         evalRunning.value = false;
+        evalProgress.value = 100;
+        evalStatusText.value = '评估完成';
         stopEvalPoll = null;
+        activeTab.value = 'reports';
         await loadBatches();
         ElMessage.success('评估完成');
       },
-      () => {
+      (message) => {
         evalRunning.value = false;
         stopEvalPoll = null;
-        ElMessage.error('评估失败');
+        evalStatusText.value = message || '评估失败';
+        ElMessage.error(evalStatusText.value);
+      },
+      (result) => {
+        evalProgress.value = Math.max(0, Math.min(Number(result?.progress) || 0, 100));
+        evalStatusText.value = getStatusLabel(String(result?.status || 'RUNNING').toUpperCase());
       }
     );
   } catch {
@@ -625,7 +607,6 @@ const openBatchDetail = async (row) => {
   detailResultList.value = [];
 
   try {
-    // 详情弹窗的数据来自 getBatchDetail 接口：包含批次均值和每条 eval_result 的四项指标。
     const data = await evalApi.getBatchDetail(batchId);
     selectedBatch.value = data?.batch || data?.batchInfo || data?.evalBatch || data || row;
     detailResultList.value = normalizeDetailResults(data);
@@ -635,12 +616,6 @@ const openBatchDetail = async (row) => {
 };
 
 onMounted(() => {
-  if (!isAllowed.value) {
-    ElMessage.warning('仅管理员可访问评估中心');
-    router.replace('/chat');
-    return;
-  }
-
   loadCases();
   loadBatches();
 });
@@ -659,7 +634,7 @@ onUnmounted(() => {
 }
 
 .eval-toolbar {
-  height: 68px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -676,26 +651,25 @@ onUnmounted(() => {
   line-height: 1.3;
 }
 
+.eval-progress {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 14px 28px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
 .eval-content {
   min-height: 0;
   flex: 1;
-  padding: 0 28px 24px;
   overflow: auto;
-}
-
-.eval-tabs {
-  min-height: 100%;
+  padding: 0 28px 24px;
 }
 
 .tab-panel {
   display: grid;
   gap: 18px;
-}
-
-.action-bar {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 6px;
 }
 
 .case-create-collapse {
@@ -754,7 +728,7 @@ onUnmounted(() => {
 
 .score-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
   gap: 8px 14px;
 }
 
@@ -793,20 +767,26 @@ onUnmounted(() => {
 .metric-card {
   min-width: 0;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  padding: 14px;
   background: #ffffff;
+  padding: 14px;
 }
 
 .metric-name {
   overflow: hidden;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   font-size: 13px;
+  font-weight: 600;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.metric-card small {
+  color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
 .metric-card strong {
@@ -824,20 +804,19 @@ onUnmounted(() => {
 
 @media (max-width: 900px) {
   .eval-toolbar,
+  .eval-progress,
   .eval-content {
     padding-left: 18px;
     padding-right: 18px;
   }
 
   .eval-toolbar {
-    height: auto;
     align-items: flex-start;
     flex-direction: column;
     padding-top: 16px;
     padding-bottom: 16px;
   }
 
-  .action-bar,
   .form-actions {
     justify-content: flex-start;
   }

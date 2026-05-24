@@ -38,20 +38,19 @@
           <el-icon>
             <SwitchButton />
           </el-icon>
-          <span>登出</span>
+          <span>退出</span>
         </button>
       </footer>
     </aside>
 
     <main class="content-area">
-      <!-- router-view 是子路由内容渲染区域，/chat、/docs、/eval 等页面会在这里显示。 -->
       <RouterView />
     </main>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   ChatDotRound,
@@ -69,15 +68,13 @@ const authStore = useAuthStore();
 
 const allMenuItems = [
   { label: '对话', path: '/chat', icon: ChatDotRound, roles: [0, 1, 2] },
-  { label: '文档管理', path: '/docs', icon: Files, roles: [0, 1] },
-  { label: '用户管理', path: '/admin/users', icon: User, roles: [0, 1] },
-  { label: '评估中心', path: '/eval', icon: DataAnalysis, roles: [0, 1] },
-  { label: '租户管理', path: '/admin/tenants', icon: OfficeBuilding, roles: [0] }
+  { label: '文档', path: '/docs', icon: Files, roles: [0, 1, 2] },
+  { label: '用户', path: '/admin/users', icon: User, roles: [0, 1] },
+  { label: '评估', path: '/eval', icon: DataAnalysis, roles: [0, 1] },
+  { label: '租户', path: '/admin/tenants', icon: OfficeBuilding, roles: [0] }
 ];
 
 const currentRole = computed(() => Number(authStore.userInfo?.role));
-
-// 动态菜单：menuItems 使用 computed 根据 authStore.userInfo.role 过滤菜单列表，只保留当前角色允许访问的菜单项。
 const menuItems = computed(() =>
   allMenuItems.filter((item) => item.roles.includes(currentRole.value))
 );
@@ -97,9 +94,12 @@ const goTo = (path) => {
 };
 
 const handleLogout = () => {
-  // 登出：authStore.logout() 内部会清空 token 并跳转登录页。
   authStore.logout();
 };
+
+onMounted(() => {
+  authStore.restoreFromStorage();
+});
 </script>
 
 <style scoped>
@@ -110,11 +110,12 @@ const handleLogout = () => {
 }
 
 .sidebar {
-  width: 260px;
+  width: var(--sidebar-width);
   min-height: 100vh;
   display: flex;
-  flex: 0 0 260px;
+  flex: 0 0 var(--sidebar-width);
   flex-direction: column;
+  border-right: 1px solid var(--color-border);
   background: var(--color-bg-sidebar);
 }
 
@@ -173,14 +174,12 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px;
   border: 0;
   border-radius: 8px;
-  color: var(--color-text-primary);
   background: transparent;
+  color: var(--color-text-primary);
   cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
+  padding: 0 12px;
   text-align: left;
   transition: color 0.16s ease, background-color 0.16s ease;
 }
@@ -191,12 +190,7 @@ const handleLogout = () => {
 
 .nav-item.active {
   color: var(--color-primary);
-  background: transparent;
   font-weight: 600;
-}
-
-.nav-item.active:hover {
-  background: rgba(16, 163, 127, 0.1);
 }
 
 .nav-icon {
@@ -263,14 +257,11 @@ const handleLogout = () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 6px;
   border: 0;
   border-radius: 8px;
-  color: var(--color-text-secondary);
   background: transparent;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 14px;
-  transition: color 0.16s ease, background-color 0.16s ease;
 }
 
 .logout-button:hover {
@@ -282,5 +273,37 @@ const handleLogout = () => {
   min-width: 0;
   flex: 1;
   background: var(--color-bg-primary);
+}
+
+@media (max-width: 720px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    flex: 0 0 auto;
+  }
+
+  .sidebar-brand {
+    padding: 16px 18px 8px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 8px 12px 12px;
+  }
+
+  .nav-item {
+    width: auto;
+    min-width: 92px;
+    flex: 0 0 auto;
+  }
+
+  .sidebar-user {
+    display: none;
+  }
 }
 </style>

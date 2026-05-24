@@ -5,22 +5,12 @@
   >
     <div class="message-content">
       <div class="message-bubble">
-        <div
-          v-if="isUserMessage"
-          class="message-text"
-        >
+        <div v-if="isUserMessage" class="message-text">
           {{ message?.content }}
         </div>
-        <!--
-          DeepSeek 的回答天然可能包含 Markdown（代码块、列表、强调等），引入并配置 marked 后，
-          可以把 AI 文本渲染成更接近文档阅读体验的 HTML。
-        -->
-        <div
-          v-else
-          class="message-markdown"
-          v-html="renderedContent"
-        />
-        <!-- isStreaming 用于区分已完成消息和正在生成的消息，流式生成时显示闪烁光标。 -->
+
+        <div v-else class="message-markdown" v-html="renderedContent" />
+
         <span
           v-if="!isUserMessage && isStreaming"
           class="message-cursor"
@@ -53,7 +43,6 @@ const props = defineProps({
   }
 });
 
-// marked 在组件内统一开启 GFM 和换行支持，保证列表、代码块和普通换行都能稳定渲染。
 marked.setOptions({
   gfm: true,
   breaks: true
@@ -67,7 +56,19 @@ const renderedContent = computed(() =>
   })
 );
 
-const sourceChunks = computed(() => props.message?.sourceChunks || props.message?.source_chunks || []);
+const sourceChunks = computed(() => {
+  const chunks = props.message?.sourceChunks || props.message?.source_chunks || [];
+
+  if (Array.isArray(chunks)) {
+    return chunks;
+  }
+
+  try {
+    return JSON.parse(chunks);
+  } catch {
+    return [];
+  }
+});
 
 const sourceQuery = computed(() => props.message?.query || props.message?.question || '');
 </script>

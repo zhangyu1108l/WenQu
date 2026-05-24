@@ -1,14 +1,13 @@
 :root {
-  /* CSS 变量集中管理颜色与尺寸，后续切换主题时只需替换变量值。 */
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f7f7f8;
   --color-bg-sidebar: #f7f7f8;
   --color-text-primary: #0d0d0d;
   --color-text-secondary: #6e6e80;
   --color-border: #e5e5e5;
-  --color-primary: #10a37f; /* ChatGPT 绿色主色 */
+  --color-primary: #10a37f;
   --color-primary-hover: #0d8c6d;
-  --color-user-bubble: #343541; /* 用户消息气泡背景 */
+  --color-user-bubble: #343541;
   --sidebar-width: 260px;
   --content-max-width: 800px;
 }

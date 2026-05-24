@@ -1,9 +1,5 @@
 <template>
-  <el-tag
-    :type="statusConfig.type"
-    effect="light"
-    round
-  >
+  <el-tag :type="statusConfig.type" effect="light" round>
     {{ statusConfig.label }}
   </el-tag>
 </template>
@@ -14,11 +10,10 @@ import { computed } from 'vue';
 const props = defineProps({
   status: {
     type: String,
-    required: true
+    default: 'PENDING'
   }
 });
 
-// 文档状态对应 async_task 的处理阶段：等待、解析、向量化、完成可用或失败。
 const statusMap = {
   PENDING: {
     type: 'info',

@@ -36,7 +36,7 @@ const parseStorageJson = (key, fallback) => {
   }
 };
 
-const normalizeRole = (role) => {
+export const normalizeRole = (role) => {
   if (role === null || role === undefined || role === '') {
     return null;
   }
@@ -50,15 +50,16 @@ const normalizeRole = (role) => {
   }
 
   const numberRole = Number(role);
-  return Number.isNaN(numberRole) ? role : numberRole;
+  return Number.isNaN(numberRole) ? null : numberRole;
 };
 
 const normalizeUserInfo = (userInfo = {}) => ({
   userId: userInfo.userId ?? userInfo.id ?? null,
   username: userInfo.username ?? '',
   role: normalizeRole(userInfo.role),
-  tenantId: userInfo.tenantId ?? null,
-  tenantCode: userInfo.tenantCode ?? ''
+  tenantId: userInfo.tenantId ?? userInfo.tenant_id ?? null,
+  tenantCode: userInfo.tenantCode ?? userInfo.tenant_code ?? '',
+  tenantName: userInfo.tenantName ?? userInfo.tenant_name ?? ''
 });
 
 const readStoredUserInfo = () => normalizeUserInfo(parseStorageJson('userInfo', {}));
@@ -70,16 +71,24 @@ const persistAuth = (token, refreshToken, userInfo) => {
 
   localStorage.setItem('token', token);
   localStorage.setItem('accessToken', token);
-  localStorage.setItem('refreshToken', refreshToken);
+  localStorage.setItem('refreshToken', refreshToken || '');
   localStorage.setItem('userInfo', JSON.stringify(userInfo));
-  // role 需要单独存入 localStorage，路由守卫可能在 Pinia 初始化前执行，只能先从 localStorage 读取权限。
-  localStorage.setItem('role', ROLE_NAME_MAP[userInfo.role] || String(userInfo.role ?? ''));
+  localStorage.setItem('role', ROLE_NAME_MAP[userInfo.role] || '');
+};
+
+const clearAuthStorage = () => {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userInfo');
+    localStorage.removeItem('role');
+  }
 };
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    // token 同时存 Pinia 和 localStorage：Pinia 用于响应式更新，localStorage 用于页面刷新后恢复登录态。
-    token: getStorageItem('token') || getStorageItem('accessToken'),
+    token: getStorageItem('accessToken') || getStorageItem('token'),
     refreshToken: getStorageItem('refreshToken'),
     userInfo: readStoredUserInfo()
   }),
@@ -87,14 +96,15 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isLoggedIn: (state) => Boolean(state.token),
     isSuperAdmin: (state) => state.userInfo.role === 0,
-    isTenantAdmin: (state) => state.userInfo.role === 0 || state.userInfo.role === 1,
-    isUser: (state) => state.userInfo.role === 2
+    isTenantAdmin: (state) => state.userInfo.role === 1,
+    isAdmin: (state) => state.userInfo.role === 0 || state.userInfo.role === 1,
+    roleName: (state) => ROLE_NAME_MAP[state.userInfo.role] || ''
   },
 
   actions: {
     async login(loginData) {
       const data = await authApi.login(loginData);
-      const token = data.token || data.accessToken || '';
+      const token = data.accessToken || data.token || '';
       const refreshToken = data.refreshToken || '';
       const userInfo = normalizeUserInfo(data.userInfo || data.user || data);
 
@@ -113,18 +123,13 @@ export const useAuthStore = defineStore('auth', {
         this.token = '';
         this.refreshToken = '';
         this.userInfo = normalizeUserInfo();
-
-        if (typeof localStorage !== 'undefined') {
-          localStorage.clear();
-        }
-
+        clearAuthStorage();
         router.push('/login');
       }
     },
 
     restoreFromStorage() {
-      // 页面刷新后 Pinia state 会重置，需要从 storage 恢复 token 和 userInfo。
-      const token = getStorageItem('token') || getStorageItem('accessToken');
+      const token = getStorageItem('accessToken') || getStorageItem('token');
       const refreshToken = getStorageItem('refreshToken');
       const userInfo = readStoredUserInfo();
 

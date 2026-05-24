@@ -1,9 +1,10 @@
 <template>
-  <div v-if="isTenantAdmin" class="document-view">
+  <div class="document-view">
     <header class="document-toolbar">
       <h2>知识库文档</h2>
 
       <el-upload
+        v-if="canManageDocs"
         ref="uploadRef"
         accept=".pdf,.docx"
         :auto-upload="true"
@@ -13,7 +14,7 @@
         :on-success="handleUploadSuccess"
         :show-file-list="false"
       >
-        <el-button type="primary" :loading="uploading">
+        <el-button :loading="uploading" type="primary">
           <el-icon>
             <UploadFilled />
           </el-icon>
@@ -28,6 +29,22 @@
         clearable
         placeholder="搜索文档名称"
         :prefix-icon="Search"
+      />
+    </section>
+
+    <section v-if="activeUploadTasks.length" class="upload-task-panel">
+      <header class="upload-task-panel__header">
+        <span>上传处理进度</span>
+      </header>
+
+      <TaskProgressBar
+        v-for="task in activeUploadTasks"
+        :key="task.taskId"
+        :doc-id="task.docId"
+        :task-id="task.taskId"
+        @done="handleTaskDone"
+        @failed="handleTaskFailed"
+        @progress="handleTaskProgress"
       />
     </section>
 
@@ -75,7 +92,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="310" fixed="right">
+        <el-table-column label="操作" :width="canManageDocs ? 310 : 170" fixed="right">
           <template #default="{ row }">
             <el-space :size="4" wrap>
               <el-button link type="primary" @click="handleDownload(row)">
@@ -89,17 +106,23 @@
                 <el-icon>
                   <Clock />
                 </el-icon>
-                <span>版本历史</span>
+                <span>版本</span>
               </el-button>
 
-              <el-button link type="primary" @click="openExpireDialog(row)">
+              <el-button
+                v-if="canManageDocs"
+                link
+                type="primary"
+                @click="openExpireDialog(row)"
+              >
                 <el-icon>
                   <Calendar />
                 </el-icon>
-                <span>设置过期</span>
+                <span>过期</span>
               </el-button>
 
               <el-popconfirm
+                v-if="canManageDocs"
                 cancel-button-text="取消"
                 confirm-button-text="删除"
                 title="确认删除该文档？"
@@ -126,36 +149,15 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        :page-sizes="[10, 20, 50]"
         layout="total, sizes, prev, pager, next, jumper"
+        :page-sizes="[10, 20, 50]"
         :total="documentStore.total"
         @current-change="handlePageChange"
         @size-change="handleSizeChange"
       />
     </footer>
 
-    <section v-if="activeUploadTasks.length" class="upload-task-panel">
-      <header class="upload-task-panel__header">
-        <span>上传处理进度</span>
-      </header>
-
-      <!-- 只有 READY 状态的文档已经完成解析和向量化，才可以参与对话检索。 -->
-      <TaskProgressBar
-        v-for="task in activeUploadTasks"
-        :key="task.taskId"
-        :doc-id="task.docId"
-        :task-id="task.taskId"
-        @done="handleTaskDone"
-        @failed="handleTaskFailed"
-      />
-    </section>
-
-    <el-dialog
-      v-model="versionDialogVisible"
-      title="版本历史"
-      width="680px"
-    >
-      <!-- 后端仅保留最近 5 个 document_version，这里最多展示 5 个版本。 -->
+    <el-dialog v-model="versionDialogVisible" title="版本历史" width="680px">
       <el-table
         v-loading="versionLoading"
         :data="versionList"
@@ -183,33 +185,21 @@
         <el-table-column label="是否激活" width="110">
           <template #default="{ row }">
             <el-tag :type="isVersionActive(row) ? 'success' : 'info'" effect="light">
-              {{ isVersionActive(row) ? '当前激活' : '历史版本' }}
+              {{ isVersionActive(row) ? '当前' : '历史' }}
             </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="操作" width="90">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="handleVersionDownload(row)">
-              下载
-            </el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-dialog>
 
-    <el-dialog
-      v-model="expireDialogVisible"
-      title="设置过期时间"
-      width="460px"
-    >
+    <el-dialog v-model="expireDialogVisible" title="设置过期时间" width="460px">
       <el-form label-position="top">
         <el-form-item label="过期时间">
           <el-date-picker
             v-model="expireAt"
             clearable
             format="YYYY-MM-DD HH:mm:ss"
-            placeholder="清空日期表示永不过期"
+            placeholder="清空表示永不过期"
             type="datetime"
             value-format="YYYY-MM-DD HH:mm:ss"
           />
@@ -218,7 +208,7 @@
 
       <template #footer>
         <el-button @click="expireDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="expireSubmitting" @click="handleSubmitExpire">
+        <el-button :loading="expireSubmitting" type="primary" @click="handleSubmitExpire">
           保存
         </el-button>
       </template>
@@ -228,7 +218,6 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
 import {
@@ -245,7 +234,6 @@ import TaskProgressBar from '../components/TaskProgressBar.vue';
 import { useAuthStore } from '../stores/auth';
 import { useDocumentStore } from '../stores/document';
 
-const router = useRouter();
 const authStore = useAuthStore();
 const documentStore = useDocumentStore();
 
@@ -258,14 +246,13 @@ const uploading = ref(false);
 const versionDialogVisible = ref(false);
 const versionLoading = ref(false);
 const versionList = ref([]);
-const selectedDoc = ref(null);
 const expireDialogVisible = ref(false);
 const expireSubmitting = ref(false);
 const expireDoc = ref(null);
 const expireAt = ref('');
 let searchTimer = null;
 
-const isTenantAdmin = computed(() => Number(authStore.userInfo?.role) === 1 || authStore.userInfo?.role === 'TENANT_ADMIN');
+const canManageDocs = computed(() => Number(authStore.userInfo?.role) === 1);
 
 const activeUploadTasks = computed(() =>
   Array.from(documentStore.uploadingTasks.entries()).map(([taskId, task]) => ({
@@ -372,10 +359,6 @@ const formatFileSize = (value) => {
 };
 
 const loadDocuments = async () => {
-  if (!isTenantAdmin.value) {
-    return;
-  }
-
   loading.value = true;
 
   try {
@@ -426,8 +409,7 @@ const handleUploadSuccess = async (response) => {
     return;
   }
 
-  // el-upload 的 :on-success 回调会收到上传接口返回的 {docId, taskId}，这里把 taskId 交给 store，后续由 TaskProgressBar 轮询处理进度。
-  documentStore.startUploadTask(Number(docId), Number(taskId));
+  documentStore.startUploadTask(docId, taskId);
   ElMessage.success('文档已上传，正在处理');
   await loadDocuments();
 };
@@ -461,7 +443,6 @@ const openVersionDialog = async (row) => {
     return;
   }
 
-  selectedDoc.value = row;
   versionDialogVisible.value = true;
   versionLoading.value = true;
 
@@ -470,12 +451,6 @@ const openVersionDialog = async (row) => {
     versionList.value = normalizeList(data).slice(0, 5);
   } finally {
     versionLoading.value = false;
-  }
-};
-
-const handleVersionDownload = async () => {
-  if (selectedDoc.value) {
-    await handleDownload(selectedDoc.value);
   }
 };
 
@@ -532,6 +507,10 @@ const handleSizeChange = () => {
   loadDocuments();
 };
 
+const handleTaskProgress = ({ taskId, status, progress }) => {
+  documentStore.updateTaskProgress(taskId, status, progress);
+};
+
 const handleTaskDone = async ({ taskId }) => {
   documentStore.removeTask(taskId);
   await loadDocuments();
@@ -544,7 +523,6 @@ const handleTaskFailed = ({ taskId, errorMsg }) => {
 };
 
 watch(keyword, () => {
-  // 搜索防抖使用 watch + setTimeout 实现：用户停止输入 500ms 后再请求列表，避免每个字符都触发分页接口。
   if (searchTimer) {
     window.clearTimeout(searchTimer);
   }
@@ -556,12 +534,6 @@ watch(keyword, () => {
 });
 
 onMounted(() => {
-  if (!isTenantAdmin.value) {
-    ElMessage.warning('仅租户管理员可访问文档管理');
-    router.replace('/chat');
-    return;
-  }
-
   loadDocuments();
 });
 
@@ -581,7 +553,7 @@ onUnmounted(() => {
 }
 
 .document-toolbar {
-  height: 68px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -608,11 +580,26 @@ onUnmounted(() => {
   max-width: 420px;
 }
 
+.upload-task-panel {
+  display: grid;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 14px 28px 18px;
+  background: #ffffff;
+}
+
+.upload-task-panel__header {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .document-table-wrap {
   min-height: 0;
   flex: 1;
-  padding: 0 28px;
   overflow: auto;
+  padding: 0 28px;
 }
 
 .document-table-wrap :deep(.el-table) {
@@ -639,21 +626,6 @@ onUnmounted(() => {
   padding: 14px 28px;
 }
 
-.upload-task-panel {
-  display: grid;
-  gap: 12px;
-  border-top: 1px solid var(--color-border);
-  padding: 14px 28px 18px;
-  background: #ffffff;
-}
-
-.upload-task-panel__header {
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
 :deep(.el-dialog__body) {
   padding-top: 8px;
 }
@@ -673,7 +645,6 @@ onUnmounted(() => {
   }
 
   .document-toolbar {
-    height: auto;
     align-items: flex-start;
     flex-direction: column;
     padding-top: 16px;

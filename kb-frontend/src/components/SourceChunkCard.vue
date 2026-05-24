@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-if="displayChunks.length"
-    class="source-chunk-list"
-  >
+  <div v-if="displayChunks.length" class="source-chunk-list">
     <article
       v-for="chunk in displayChunks"
       :key="chunk.key"
@@ -10,21 +7,13 @@
     >
       <div class="source-chunk-card__header">
         <span class="source-chunk-card__title">{{ chunk.headingPath }}</span>
-        <span
-          v-if="chunk.pageNo"
-          class="source-chunk-card__page"
-        >
+        <span v-if="chunk.pageNo" class="source-chunk-card__page">
           第 {{ chunk.pageNo }} 页
         </span>
       </div>
-      <!--
-        关键词高亮先转义 content，再用 v-html 渲染插入了 <mark> 的安全 HTML。
-        用户 query 只用于生成匹配规则，不直接渲染，避免把用户输入当作 HTML 注入。
-      -->
-      <p
-        class="source-chunk-card__content"
-        v-html="chunk.highlightedContent"
-      />
+
+      <p class="source-chunk-card__content" v-html="chunk.highlightedContent" />
+
       <div class="source-chunk-card__score">
         相关度 {{ chunk.scoreText }}
       </div>
@@ -57,20 +46,17 @@ const escapeHtml = (value) =>
 const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const queryWords = computed(() => {
-  // 这里按空格做简单分词，满足引用高亮展示，不引入复杂 NLP 处理。
   const words = props.query
     .trim()
     .split(/\s+/)
     .filter(Boolean);
 
-  return [...new Set(words)]
-    .map(escapeHtml)
-    .sort((a, b) => b.length - a.length);
+  return [...new Set(words)].sort((a, b) => b.length - a.length);
 });
 
 const highlightContent = (content) => {
   const rawContent = String(content ?? '');
-  const preview = rawContent.length > 150 ? `${rawContent.slice(0, 150)}...` : rawContent;
+  const preview = rawContent.length > 180 ? `${rawContent.slice(0, 180)}...` : rawContent;
   const safePreview = escapeHtml(preview);
 
   if (!queryWords.value.length) {
@@ -88,7 +74,7 @@ const displayChunks = computed(() =>
     const pageNo = chunk?.pageNo ?? chunk?.page_no;
 
     return {
-      key: chunk?.chunkId ?? chunk?.id ?? `${headingPath}-${index}`,
+      key: chunk?.chunkId ?? chunk?.chunk_id ?? chunk?.id ?? `${headingPath}-${index}`,
       headingPath,
       pageNo,
       highlightedContent: highlightContent(chunk?.content),
@@ -110,12 +96,6 @@ const displayChunks = computed(() =>
   border-radius: 8px;
   background: var(--color-bg-secondary);
   padding: 12px 14px;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
-}
-
-.source-chunk-card:hover {
-  box-shadow: 0 8px 20px rgb(0 0 0 / 8%);
-  transform: translateY(-1px);
 }
 
 .source-chunk-card__header {
