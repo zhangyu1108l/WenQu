@@ -48,8 +48,15 @@ export function useChat() {
     chatStore.startStreaming(normalizedQuestion);
     scrollToBottom();
 
-    const url = chatApi.buildAskUrl(chatStore.currentConvId, normalizedQuestion);
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+    const url = chatApi.buildAskUrl(chatStore.currentConvId);
     const client = new SseClient(url, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ question: normalizedQuestion }),
       onToken: (token) => {
         chatStore.appendToken(token);
         scrollToBottom();

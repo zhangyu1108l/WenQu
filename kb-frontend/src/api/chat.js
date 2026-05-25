@@ -10,5 +10,4 @@ export const deleteConversation = (id) => del(`/chat/conversations/${id}`);
 
 export const getMessageList = (id) => get(`/chat/conversations/${id}/messages`);
 
-export const buildAskUrl = (id, question) =>
-  `${API_BASE_URL}/chat/conversations/${id}/ask?question=${encodeURIComponent(String(question ?? ''))}`;
+export const buildAskUrl = (id) => `${API_BASE_URL}/chat/conversations/${id}/ask`;

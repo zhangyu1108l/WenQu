@@ -6,6 +6,9 @@ import com.kb.app.module.auth.entity.UserDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
 
 /**
  * 用户表 Mapper — 对应数据库 user 表。
@@ -69,4 +72,19 @@ public interface UserMapper extends BaseMapper<UserDO> {
     @InterceptorIgnore(tenantLine = "true")
     @Select("SELECT * FROM user WHERE id = #{id} LIMIT 1")
     UserDO selectByIdIgnoreTenant(@Param("id") Long id);
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("""
+            SELECT *
+            FROM user
+            ORDER BY tenant_id ASC, id ASC
+            """)
+    List<UserDO> selectAllIgnoreTenant();
+
+    @Update("UPDATE user SET role = #{role} WHERE id = #{id}")
+    int updateRole(@Param("id") Long id, @Param("role") Integer role);
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Update("UPDATE user SET role = #{role} WHERE id = #{id}")
+    int updateRoleIgnoreTenant(@Param("id") Long id, @Param("role") Integer role);
 }
