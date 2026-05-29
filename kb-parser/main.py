@@ -70,7 +70,7 @@ async def parse_document(
     if not file_bytes:
         raise HTTPException(status_code=400, detail="文件内容为空")
 
-    # 步骤 3：规范化文件类型，并路由到匹配的解析器。
+    # 步骤 3：规范化文件类型，并路由到匹配的解析器。  
     normalized_file_type = file_type.strip().lower()
     if normalized_file_type == "pdf":
         parsed = PdfParser().parse(file_bytes)

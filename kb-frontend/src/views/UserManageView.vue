@@ -244,20 +244,23 @@ onMounted(() => {
 
 <style scoped>
 .user-manage-view {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--topbar-height));
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-bg-secondary);
+  padding: 20px 24px;
 }
 
 .page-toolbar {
-  min-height: 68px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px 10px 0 0;
+  background: #ffffff;
+  padding: 0 20px;
 }
 
 .page-toolbar h2 {
@@ -272,12 +275,16 @@ onMounted(() => {
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 0 28px;
+  border: 1px solid var(--color-border);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #ffffff;
+  padding: 0;
 }
 
 .table-wrap :deep(.el-table) {
   --el-table-header-bg-color: #ffffff;
-  --el-table-row-hover-bg-color: rgba(16, 163, 127, 0.06);
+  --el-table-row-hover-bg-color: var(--color-primary-soft);
 }
 
 .entity-name {
@@ -306,8 +313,12 @@ onMounted(() => {
 @media (max-width: 900px) {
   .page-toolbar,
   .table-wrap {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .user-manage-view {
+    padding: 12px;
   }
 
   .page-toolbar {

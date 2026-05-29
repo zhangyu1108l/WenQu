@@ -627,20 +627,23 @@ onUnmounted(() => {
 
 <style scoped>
 .eval-view {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--topbar-height));
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-bg-secondary);
+  padding: 20px 24px;
 }
 
 .eval-toolbar {
-  min-height: 68px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px 10px 0 0;
+  background: #ffffff;
+  padding: 0 20px;
 }
 
 .eval-toolbar h2 {
@@ -654,8 +657,10 @@ onUnmounted(() => {
 .eval-progress {
   display: grid;
   gap: 8px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 14px 28px;
+  border-right: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  padding: 14px 20px;
+  background: #ffffff;
   color: var(--color-text-secondary);
   font-size: 13px;
 }
@@ -664,7 +669,11 @@ onUnmounted(() => {
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 0 28px 24px;
+  border: 1px solid var(--color-border);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #ffffff;
+  padding: 0 20px 24px;
 }
 
 .tab-panel {
@@ -675,6 +684,7 @@ onUnmounted(() => {
 .case-create-collapse {
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
+  background: #ffffff;
 }
 
 .case-create-collapse :deep(.el-collapse-item__header) {
@@ -702,7 +712,7 @@ onUnmounted(() => {
 
 .table-wrap :deep(.el-table) {
   --el-table-header-bg-color: #ffffff;
-  --el-table-row-hover-bg-color: rgba(16, 163, 127, 0.06);
+  --el-table-row-hover-bg-color: var(--color-primary-soft);
 }
 
 .text-cell {
@@ -770,7 +780,7 @@ onUnmounted(() => {
   gap: 8px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--color-bg-subtle);
   padding: 14px;
 }
 
@@ -806,8 +816,12 @@ onUnmounted(() => {
   .eval-toolbar,
   .eval-progress,
   .eval-content {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .eval-view {
+    padding: 12px;
   }
 
   .eval-toolbar {

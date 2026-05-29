@@ -131,6 +131,10 @@ onUnmounted(() => {
 <style scoped>
 .task-progress-bar {
   width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-subtle);
+  padding: 12px;
 }
 
 .task-progress-bar__text {

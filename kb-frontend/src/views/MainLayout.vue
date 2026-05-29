@@ -1,51 +1,49 @@
 <template>
   <div class="main-layout">
-    <aside class="sidebar">
-      <header class="sidebar-brand">
-        <div class="brand-logo">问</div>
-        <div class="brand-text">
-          <h1>问渠</h1>
-          <span>企业知识库</span>
+    <header class="topbar">
+      <div class="topbar-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <span />
         </div>
-      </header>
+        <strong>WenQu</strong>
+      </div>
 
-      <nav class="sidebar-nav" aria-label="主导航">
-        <button
-          v-for="item in menuItems"
-          :key="item.path"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-          type="button"
-          @click="goTo(item.path)"
-        >
-          <el-icon class="nav-icon">
-            <component :is="item.icon" />
-          </el-icon>
-          <span>{{ item.label }}</span>
-        </button>
-      </nav>
-
-      <footer class="sidebar-user">
-        <div class="user-profile">
-          <div class="user-avatar">{{ avatarText }}</div>
-          <div class="user-meta">
-            <strong>{{ username }}</strong>
-            <span>{{ tenantName }}</span>
-          </div>
-        </div>
-
-        <button class="logout-button" type="button" @click="handleLogout">
+      <div class="topbar-actions">
+        <button class="user-chip" type="button" @click="handleLogout">
+          <span class="user-avatar">{{ avatarText }}</span>
+          <span class="user-name">{{ username }}</span>
+          <small>{{ roleLabel }}</small>
           <el-icon>
             <SwitchButton />
           </el-icon>
-          <span>退出</span>
         </button>
-      </footer>
-    </aside>
+      </div>
+    </header>
 
-    <main class="content-area">
-      <RouterView />
-    </main>
+    <div class="workspace-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <nav class="sidebar-nav">
+          <button
+            v-for="item in menuItems"
+            :key="item.path"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            :title="item.label"
+            type="button"
+            @click="goTo(item.path)"
+          >
+            <el-icon class="nav-icon">
+              <component :is="item.icon" />
+            </el-icon>
+            <span>{{ item.label }}</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="content-area">
+        <RouterView />
+      </main>
+    </div>
   </div>
 </template>
 
@@ -80,10 +78,20 @@ const menuItems = computed(() =>
 );
 
 const username = computed(() => authStore.userInfo?.username || '用户');
-const tenantName = computed(
-  () => authStore.userInfo?.tenantName || authStore.userInfo?.tenantCode || '默认租户'
-);
 const avatarText = computed(() => username.value.trim().slice(0, 1).toUpperCase() || '问');
+const roleLabel = computed(() => {
+  const role = currentRole.value;
+
+  if (role === 0) {
+    return '超管';
+  }
+
+  if (role === 1) {
+    return '管理员';
+  }
+
+  return '用户';
+});
 
 const isActive = (path) => route.path === path || route.path.startsWith(`${path}/`);
 
@@ -106,12 +114,137 @@ onMounted(() => {
 .main-layout {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   background: var(--color-bg-primary);
+}
+
+.topbar {
+  height: var(--topbar-height);
+  display: flex;
+  flex: 0 0 var(--topbar-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0 20px;
+  backdrop-filter: blur(18px);
+}
+
+.topbar-brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #4f7cff, #23cce7);
+  box-shadow: 0 10px 24px rgba(63, 109, 246, 0.22);
+  transform: rotate(45deg);
+}
+
+.brand-mark::before,
+.brand-mark::after,
+.brand-mark span {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.76);
+  content: '';
+}
+
+.brand-mark::before {
+  top: 6px;
+  left: 6px;
+}
+
+.brand-mark::after {
+  right: 6px;
+  bottom: 6px;
+}
+
+.brand-mark span {
+  top: 6px;
+  right: 6px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.topbar-brand > strong {
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-chip {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  padding: 0 6px 0 0;
+}
+
+.user-chip:hover {
+  background: var(--color-bg-secondary);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #ffffff;
+  background: linear-gradient(135deg, #5a84ff, #23cce7);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.user-name {
+  max-width: 92px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-chip small {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.workspace-shell {
+  min-height: 0;
+  display: flex;
+  flex: 1;
 }
 
 .sidebar {
   width: var(--sidebar-width);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--topbar-height));
   display: flex;
   flex: 0 0 var(--sidebar-width);
   flex-direction: column;
@@ -119,164 +252,79 @@ onMounted(() => {
   background: var(--color-bg-sidebar);
 }
 
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 24px 20px 18px;
-}
-
-.brand-logo {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 8px;
-  color: #ffffff;
-  background: var(--color-primary);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.brand-text {
-  min-width: 0;
-}
-
-.brand-text h1 {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.brand-text span {
-  display: block;
-  margin-top: 3px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .sidebar-nav {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 16px 9px;
 }
 
 .nav-item {
   width: 100%;
-  height: 44px;
+  min-height: 54px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--color-text-primary);
+  color: #667085;
   cursor: pointer;
-  padding: 0 12px;
-  text-align: left;
+  padding: 7px 4px;
   transition: color 0.16s ease, background-color 0.16s ease;
 }
 
 .nav-item:hover {
-  background: rgba(16, 163, 127, 0.1);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .nav-item.active {
+  background: linear-gradient(180deg, #eef4ff, #f6fbff);
   color: var(--color-primary);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 .nav-icon {
   flex: 0 0 auto;
-  font-size: 18px;
+  font-size: 19px;
 }
 
-.sidebar-user {
-  padding: 14px 12px 18px;
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 8px;
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  color: #ffffff;
-  background: var(--color-primary);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.user-meta {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.user-meta strong,
-.user-meta span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-meta strong {
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.user-meta span {
-  color: var(--color-text-secondary);
+.nav-item span {
   font-size: 12px;
-  line-height: 1.3;
-}
-
-.logout-button {
-  width: 100%;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.logout-button:hover {
-  color: var(--color-primary);
-  background: rgba(16, 163, 127, 0.1);
+  line-height: 1.2;
 }
 
 .content-area {
   min-width: 0;
+  min-height: calc(100vh - var(--topbar-height));
   flex: 1;
-  background: var(--color-bg-primary);
+  background: var(--color-bg-secondary);
 }
 
 @media (max-width: 720px) {
-  .main-layout {
+  .topbar {
+    height: auto;
+    min-height: var(--topbar-height);
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 14px;
+  }
+
+  .topbar-actions,
+  .topbar-brand {
+    width: 100%;
+  }
+
+  .topbar-actions {
+    justify-content: space-between;
+  }
+
+  .workspace-shell {
     flex-direction: column;
   }
 
@@ -284,26 +332,23 @@ onMounted(() => {
     width: 100%;
     min-height: auto;
     flex: 0 0 auto;
-  }
-
-  .sidebar-brand {
-    padding: 16px 18px 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
   }
 
   .sidebar-nav {
     flex-direction: row;
     overflow-x: auto;
-    padding: 8px 12px 12px;
+    padding: 8px 12px;
   }
 
   .nav-item {
-    width: auto;
-    min-width: 92px;
+    min-width: 72px;
     flex: 0 0 auto;
   }
 
-  .sidebar-user {
-    display: none;
+  .content-area {
+    min-height: auto;
   }
 }
 </style>

@@ -3,6 +3,8 @@
     class="message-row"
     :class="{ 'is-user': isUserMessage, 'is-assistant': !isUserMessage }"
   >
+    <div v-if="!isUserMessage" class="message-avatar" aria-hidden="true">AI</div>
+
     <div class="message-content">
       <div class="message-bubble">
         <div v-if="isUserMessage" class="message-text">
@@ -24,6 +26,8 @@
         :query="sourceQuery"
       />
     </div>
+
+    <div v-if="isUserMessage" class="message-avatar is-user-avatar" aria-hidden="true">我</div>
   </div>
 </template>
 
@@ -76,6 +80,8 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 <style scoped>
 .message-row {
   display: flex;
+  align-items: flex-start;
+  gap: 10px;
   width: 100%;
 }
 
@@ -88,27 +94,50 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 }
 
 .message-content {
-  max-width: min(76%, var(--content-max-width));
+  max-width: min(78%, var(--content-max-width));
 }
 
 .message-bubble {
   position: relative;
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 13px 15px;
   font-size: 15px;
   line-height: 1.7;
   word-break: break-word;
 }
 
 .is-user .message-bubble {
+  border: 1px solid #dbe8ff;
   background: var(--color-user-bubble);
-  color: #ffffff;
+  color: var(--color-text-primary);
 }
 
 .is-assistant .message-bubble {
   border: 1px solid var(--color-border);
   background: #ffffff;
   color: var(--color-text-primary);
+  box-shadow: 0 10px 26px rgba(16, 24, 40, 0.05);
+}
+
+.message-avatar {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f7cff, #23cce7);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(63, 109, 246, 0.2);
+}
+
+.is-user-avatar {
+  background: #f2f5f9;
+  color: var(--color-text-secondary);
+  box-shadow: none;
 }
 
 .message-text {
@@ -138,7 +167,7 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 
 .message-markdown :deep(code) {
   border-radius: 4px;
-  background: var(--color-bg-secondary);
+  background: #f6f8fa;
   padding: 2px 5px;
   font-family: Consolas, 'Courier New', monospace;
   font-size: 0.92em;
@@ -186,7 +215,7 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 
 @media (max-width: 768px) {
   .message-content {
-    max-width: 92%;
+    max-width: calc(100% - 38px);
   }
 }
 </style>

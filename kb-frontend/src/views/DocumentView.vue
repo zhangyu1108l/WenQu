@@ -546,20 +546,23 @@ onUnmounted(() => {
 
 <style scoped>
 .document-view {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--topbar-height));
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-bg-secondary);
+  padding: 20px 24px;
 }
 
 .document-toolbar {
-  min-height: 68px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px 10px 0 0;
+  background: #ffffff;
+  padding: 0 20px;
 }
 
 .document-toolbar h2 {
@@ -571,9 +574,10 @@ onUnmounted(() => {
 }
 
 .search-bar {
-  border-bottom: 1px solid var(--color-border);
-  padding: 16px 28px;
-  background: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  padding: 14px 20px;
+  background: #ffffff;
 }
 
 .search-bar :deep(.el-input) {
@@ -583,8 +587,9 @@ onUnmounted(() => {
 .upload-task-panel {
   display: grid;
   gap: 12px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 14px 28px 18px;
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+  padding: 14px 20px 18px;
   background: #ffffff;
 }
 
@@ -599,12 +604,15 @@ onUnmounted(() => {
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 0 28px;
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+  background: #ffffff;
+  padding: 0;
 }
 
 .document-table-wrap :deep(.el-table) {
   --el-table-header-bg-color: #ffffff;
-  --el-table-row-hover-bg-color: rgba(16, 163, 127, 0.06);
+  --el-table-row-hover-bg-color: var(--color-primary-soft);
 }
 
 .doc-title {
@@ -622,8 +630,10 @@ onUnmounted(() => {
 .pagination-wrap {
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid var(--color-border);
-  padding: 14px 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 10px 10px;
+  background: #ffffff;
+  padding: 14px 20px;
 }
 
 :deep(.el-dialog__body) {
@@ -640,8 +650,12 @@ onUnmounted(() => {
   .document-table-wrap,
   .pagination-wrap,
   .upload-task-panel {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .document-view {
+    padding: 12px;
   }
 
   .document-toolbar {
