@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -44,6 +45,7 @@ public class RagChain {
 
     private static final long SSE_TIMEOUT_MILLIS = 180_000L;
     private static final int HISTORY_MAX_ROUNDS = 5;
+    private static final Long EVAL_CONVERSATION_ID = -1L;
     private static final int ROLE_USER = 0;
     private static final int ROLE_ASSISTANT = 1;
     private static final String USER_FACING_ERROR = "服务异常，请重试";
@@ -148,6 +150,31 @@ public class RagChain {
         }, ragExecutor);
 
         return emitter;
+    }
+
+    /**
+     * 非流式版本的 RAG 问答，供 Ragas 评估内部调用。
+     * <p>
+     * 与 {@link #ask(Long, String, Long, Long)} 的区别是：ask 使用 SseEmitter 逐字推送 token，
+     * 本方法同步返回完整回答字符串，便于 Ragas 一次性计算评估指标。
+     * <p>
+     * contexts 是 chunk 的原文列表，不是 chunk ID 或其他元数据；Ragas 需要原文内容做语义判断。
+     *
+     * @param question 用户原始问题
+     * @param tenantId 租户ID，用于定位租户 Milvus Collection
+     * @return modelAnswer + contexts
+     */
+    public Map<String, Object> askSync(String question, Long tenantId) {
+        List<ChatMessage> history = historyService.getWindow(EVAL_CONVERSATION_ID, HISTORY_MAX_ROUNDS);
+        String rewrittenQuery = queryRewriter.rewrite(toRewriterHistory(history), question);
+        List<ChunkResult> topChunks = vectorRetriever.searchAndRerank(rewrittenQuery, tenantId);
+        String prompt = promptBuilder.buildRagPrompt(history, topChunks, question);
+        String fullAnswer = deepSeekChatClient.chat(prompt);
+
+        return Map.of(
+                "modelAnswer", fullAnswer,
+                "contexts", topChunks.stream().map(ChunkResult::getContent).toList()
+        );
     }
 
     /**
