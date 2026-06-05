@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 /**
  * 逻辑文档实体类 — 对应数据库 document 表。
  * <p>
- * 同一租户下，相同文件名的多次上传视为同一文档的不同版本（version_no 递增）。
+ * 同一租户下，相同标题且相同文件类型的多次上传视为同一文档的不同版本（version_no 递增）。
+ * 同名 Word 和 PDF 会拥有相同标题，但 file_type 不同，应保存为两个独立文档。
  * <p>
  * status 字段驱动异步处理状态机：
  * <ul>

@@ -21,7 +21,7 @@ import java.util.List;
  * <p>
  * 主要使用场景：
  * <ul>
- *     <li>上传：insert 新文档记录，或查询同名文档判断是否为新版本</li>
+ *     <li>上传：insert 新文档记录，或查询同标题同类型文档判断是否为新版本</li>
  *     <li>列表：按租户分页查询文档（支持关键词搜索）</li>
  *     <li>状态更新：异步任务中更新 status 字段（PENDING → PARSING → EMBEDDING → READY）</li>
  *     <li>删除：删除文档时需同步清理 MinIO + Milvus + doc_chunk + document_version</li>
@@ -33,21 +33,20 @@ import java.util.List;
 public interface DocumentMapper extends BaseMapper<DocumentDO> {
 
     /**
-     * 根据租户ID和文档标题查询文档。
+     * 根据租户ID、文档标题和文件类型查询文档。
      * <p>
-     * 调用时机：文档上传时，判断同名文档是否已存在。
-     * 若存在，则视为同一文档的新版本（version_no 递增）；若不存在，则创建新文档。
-     * <p>
-     * 虽然租户拦截器会自动追加 tenant_id 条件，
-     * 但此处显式写入 SQL 使同名判断意图更清晰。
+     * 文档标题按架构约定保存为“去扩展名后的文件名”，因此同名 docx 和 pdf 会拥有相同 title。
+     * 上传判重必须同时比较 file_type，避免把同名 Word 和 PDF 误判为同一个文档的不同版本。
      *
      * @param tenantId 租户ID，不允许为 null
-     * @param title    文档标题（文件名去掉扩展名），不允许为 null
+     * @param title    文档标题（文件名去掉扩展名）
+     * @param fileType 文件类型（pdf / docx）
      * @return 匹配的文档实体，不存在时返回 null
      */
-    @Select("SELECT * FROM document WHERE tenant_id = #{tenantId} AND title = #{title} LIMIT 1")
-    DocumentDO selectByTenantIdAndTitle(@Param("tenantId") Long tenantId,
-                                       @Param("title") String title);
+    @Select("SELECT * FROM document WHERE tenant_id = #{tenantId} AND title = #{title} AND file_type = #{fileType} LIMIT 1")
+    DocumentDO selectByTenantIdAndTitleAndFileType(@Param("tenantId") Long tenantId,
+                                                   @Param("title") String title,
+                                                   @Param("fileType") String fileType);
 
     /**
      * 更新文档处理状态。

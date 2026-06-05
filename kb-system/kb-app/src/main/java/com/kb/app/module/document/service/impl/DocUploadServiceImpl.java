@@ -70,7 +70,7 @@ public class DocUploadServiceImpl implements DocUploadService {
      * <b>执行步骤：</b>
      * <ol>
      *     <li>校验文件类型（只允许 pdf / docx）</li>
-     *     <li>根据 tenantId + 文件名判断是否存在同名文档（新建 or 新版本）</li>
+     *     <li>根据 tenantId + 标题 + 文件类型判断是否存在同文档（新建 or 新版本）</li>
      *     <li>创建 async_task 记录（PENDING 状态）</li>
      *     <li>在主线程读取文件字节（MultipartFile 在异步线程中可能已关闭）</li>
      *     <li>触发异步处理（不等待）</li>
@@ -104,15 +104,21 @@ public class DocUploadServiceImpl implements DocUploadService {
         }
 
         String title = originalFilename.substring(0, originalFilename.lastIndexOf('.'));
-        DocumentDO existingDoc = documentMapper.selectByTenantIdAndTitle(tenantId, title);
+        /*
+         * title 按架构约定保存为去掉扩展名后的文件名，因此同名 docx 和 pdf 的 title 相同。
+         * 这里必须把 file_type 一起作为同文档判定条件，否则会把 PDF 字节按旧文档的 docx 类型送去解析，
+         * 或把 Word 字节按 pdf 类型解析，导致“解析服务返回错误”。
+         */
+        DocumentDO existingDoc = documentMapper.selectByTenantIdAndTitleAndFileType(tenantId, title, extension);
 
         DocumentDO doc;
         if (existingDoc != null) {
-            // 同名文档已存在，使用已有的 documentId（后续创建新版本）
+            // 同标题同类型文档已存在，使用已有的 documentId（后续创建新版本）
             doc = existingDoc;
-            log.info("检测到同名文档，将创建新版本：文档ID={}，标题={}", doc.getId(), title);
+            log.info("检测到同名同类型文档，将创建新版本：文档ID={}，标题={}，文件类型={}",
+                    doc.getId(), title, extension);
         } else {
-            // 不存在同名文档，插入新 document 记录
+            // 不存在同标题同类型文档，插入新 document 记录
             doc = DocumentDO.builder()
                     .tenantId(tenantId)
                     .uploaderId(userId)
