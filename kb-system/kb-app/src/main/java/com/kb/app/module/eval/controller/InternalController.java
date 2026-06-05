@@ -70,6 +70,7 @@ public class InternalController {
 
         String status = normalizeStatus(request.getStatus());
         updateEvalBatch(request, status);
+        deleteExistingEvalResults(request.getBatchId());
         batchInsertEvalResults(request.getBatchId(), request.getResults());
         updateAsyncTask(request.getBatchId(), status, request.getError());
 
@@ -127,6 +128,10 @@ public class InternalController {
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                         """,
                 rows);
+    }
+
+    private void deleteExistingEvalResults(Long batchId) {
+        jdbcTemplate.update("DELETE FROM eval_result WHERE batch_id = ?", batchId);
     }
 
     private void updateAsyncTask(Long batchId, String status, String error) {

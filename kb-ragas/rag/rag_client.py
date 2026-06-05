@@ -44,11 +44,13 @@ class RagClient:
 
         payload = response.json()
         data = payload.get("data", payload) if isinstance(payload, dict) else {}
-        model_answer = data.get("model_answer", "")
+        model_answer = data.get("modelAnswer") or data.get("model_answer") or ""
         # contexts is the list of original retrieved chunk texts. Ragas needs it
         # to compute context_recall and context_precision; without this input,
         # those metrics cannot be calculated.
-        contexts = data.get("contexts", [])
+        contexts = data.get("contexts") or []
+        if not isinstance(contexts, list):
+            contexts = []
 
         return {
             "model_answer": model_answer,

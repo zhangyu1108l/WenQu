@@ -67,7 +67,11 @@ async def lifespan(app: FastAPI):
 
         # Step 2: initialize the Java RAG client after the evaluator because it
         # depends on service routing, while evaluator config is the first hard gate.
-        java_base_url = os.getenv("JAVA_BASE_URL", "http://app:8081").strip()
+        java_base_url = (
+            os.getenv("JAVA_BASE_URL")
+            or os.getenv("JAVA_APP_BASE_URL")
+            or "http://app:8081"
+        ).strip()
         if not java_base_url:
             raise RuntimeError("JAVA_BASE_URL is empty")
         rag_client = RagClient(java_base_url=java_base_url)
@@ -86,6 +90,12 @@ async def lifespan(app: FastAPI):
         logger.info("kb-ragas started, java_base_url=%s", java_base_url)
         yield
     finally:
+        background_tasks = getattr(app.state, "background_tasks", set())
+        if background_tasks:
+            for task in list(background_tasks):
+                task.cancel()
+            await asyncio.gather(*background_tasks, return_exceptions=True)
+            background_tasks.clear()
         if rag_client is not None:
             await rag_client.close()
         logger.info("kb-ragas shutdown complete")

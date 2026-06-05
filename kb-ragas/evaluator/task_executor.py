@@ -37,12 +37,15 @@ class TaskExecutor:
             # concurrent DeepSeek/Ragas calls can trigger provider rate limits.
             # Resume-project batches are small, so serial execution is stable
             # and fast enough for this sidecar.
-            for case in request.cases:
+            case_count = len(request.cases)
+            for case_index, case in enumerate(request.cases, start=1):
                 try:
                     # Long evaluations need detailed milestone logs; they make
                     # it clear which case is currently blocked or failed.
                     logger.info(
-                        "Evaluating case_id=%s batch_id=%s",
+                        "Evaluating case %s/%s case_id=%s batch_id=%s",
+                        case_index,
+                        case_count,
                         case.case_id,
                         request.batch_id,
                     )
@@ -75,8 +78,11 @@ class TaskExecutor:
                     single_results.append(single_result)
 
                     logger.info(
-                        "Case %s evaluated: faithfulness=%s",
+                        "Case %s/%s evaluated case_id=%s batch_id=%s faithfulness=%s",
+                        case_index,
+                        case_count,
                         case.case_id,
+                        request.batch_id,
                         scores["faithfulness"],
                     )
                 except Exception as exc:
@@ -93,7 +99,9 @@ class TaskExecutor:
                         )
                     )
                     logger.exception(
-                        "Case %s evaluation failed batch_id=%s",
+                        "Case %s/%s evaluation failed case_id=%s batch_id=%s",
+                        case_index,
+                        case_count,
                         case.case_id,
                         request.batch_id,
                     )

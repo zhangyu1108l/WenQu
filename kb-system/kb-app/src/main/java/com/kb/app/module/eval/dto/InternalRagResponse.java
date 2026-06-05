@@ -1,6 +1,5 @@
 package com.kb.app.module.eval.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -18,7 +17,6 @@ public class InternalRagResponse {
     /**
      * LLM 生成的完整回答。
      */
-    @JsonProperty("model_answer")
     private String modelAnswer;
 
     /**

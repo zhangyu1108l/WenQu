@@ -106,9 +106,15 @@ class RagasEvaluator:
             def safe_score(val) -> float | None:
                 # JSON 不支持 NaN，直接序列化会失败，所以评估失败的 NaN 统一转为 None。
                 # 指标用于趋势观察和批次均值，保留 4 位小数已经有足够精度。
-                if val is None or math.isnan(val):
+                if val is None:
                     return None
-                return round(float(val), 4)
+                try:
+                    numeric = float(val)
+                except (TypeError, ValueError):
+                    return None
+                if not math.isfinite(numeric):
+                    return None
+                return round(numeric, 4)
 
             return {
                 "faithfulness": safe_score(faithfulness_score),
