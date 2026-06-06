@@ -1,5 +1,7 @@
 package com.kb.app.rag.client;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kb.app.rag.dto.ChunkDTO;
 import com.kb.common.exception.BusinessException;
 import lombok.Data;
@@ -28,9 +30,12 @@ public class ParserClient {
     private static final String HEALTH_URI = "/health";
 
     private final RestClient parserRestClient;
+    private final ObjectMapper objectMapper;
 
-    public ParserClient(@Qualifier("parserRestClient") RestClient parserRestClient) {
+    public ParserClient(@Qualifier("parserRestClient") RestClient parserRestClient,
+                        ObjectMapper objectMapper) {
         this.parserRestClient = parserRestClient;
+        this.objectMapper = objectMapper;
     }
 
     public List<ChunkDTO> parse(byte[] fileBytes, String fileType) {
@@ -77,12 +82,28 @@ public class ParserClient {
         } catch (HttpStatusCodeException e) {
             log.error("Parser sidecar returned error: uri={}, fileType={}, status={}, body={}",
                     PARSE_URI, fileType, e.getStatusCode(), e.getResponseBodyAsString());
-            throw BusinessException.of(4002, "解析服务返回错误");
+            throw BusinessException.of(4002, extractParserError(e.getResponseBodyAsString()));
         } catch (RestClientException e) {
             log.error("Call parser sidecar failed: uri={}, fileType={}, error={}",
                     PARSE_URI, fileType, e.getMessage());
             throw BusinessException.of(4003, "文档解析失败");
         }
+    }
+
+    private String extractParserError(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "解析服务返回错误";
+        }
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            JsonNode errorNode = root.get("error");
+            if (errorNode != null && errorNode.isTextual() && !errorNode.asText().isBlank()) {
+                return errorNode.asText();
+            }
+        } catch (Exception e) {
+            log.warn("Parse parser error response failed: body={}", responseBody, e);
+        }
+        return "解析服务返回错误";
     }
 
     public boolean checkHealth() {

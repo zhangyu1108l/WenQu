@@ -43,6 +43,10 @@ public interface AsyncTaskMapper extends BaseMapper<AsyncTaskDO> {
     AsyncTaskDO selectByBizId(@Param("bizId") Long bizId,
                               @Param("taskType") String taskType);
 
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("SELECT * FROM async_task WHERE id = #{id} LIMIT 1")
+    AsyncTaskDO selectByIdIgnoreTenant(@Param("id") Long id);
+
     /**
      * 查询指定类型下所有 RUNNING 状态的任务。
      * <p>

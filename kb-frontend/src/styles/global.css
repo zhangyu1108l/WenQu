@@ -2,12 +2,12 @@
 
 :root {
   --el-color-primary: var(--color-primary);
-  --el-color-primary-light-3: #7295ff;
-  --el-color-primary-light-5: #9ab5ff;
-  --el-color-primary-light-7: #c8d8ff;
-  --el-color-primary-light-8: #dce8ff;
-  --el-color-primary-light-9: #eef4ff;
-  --el-color-primary-dark-2: #2f5be7;
+  --el-color-primary-light-3: #5f95ff;
+  --el-color-primary-light-5: #91b7ff;
+  --el-color-primary-light-7: #bfd5ff;
+  --el-color-primary-light-8: #d8e7ff;
+  --el-color-primary-light-9: #edf5ff;
+  --el-color-primary-dark-2: #0f58df;
   --el-border-radius-base: var(--app-radius);
   --el-border-color: var(--color-border);
   --el-border-color-light: var(--color-border);
@@ -85,14 +85,14 @@ button {
 
 .el-button--primary {
   border-color: transparent;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent-cyan));
-  box-shadow: 0 8px 18px rgba(63, 109, 246, 0.22);
+  background: var(--color-primary);
+  box-shadow: 0 10px 22px rgba(23, 105, 255, 0.2);
 }
 
 .el-button--primary:hover,
 .el-button--primary:focus {
   border-color: transparent;
-  background: linear-gradient(135deg, var(--color-primary-hover), #18badc);
+  background: var(--color-primary-hover);
 }
 
 .el-button.is-link {
@@ -127,7 +127,12 @@ button {
 }
 
 .el-table th.el-table__cell {
-  font-weight: 600;
+  background: #f8fafd;
+  font-weight: 700;
+}
+
+.el-table .el-table__cell {
+  padding: 12px 0;
 }
 
 .el-tag {

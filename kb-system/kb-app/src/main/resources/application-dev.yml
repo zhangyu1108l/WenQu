@@ -19,7 +19,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:81.70.177.51}:${MYSQL_PORT:3306}/${MYSQL_DB:kb_system}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:1234}
+    password: ${MYSQL_PASSWORD:KbSys@2024#Secure!Pwd}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -39,7 +39,7 @@ spring:
     redis:
       host: ${REDIS_HOST:81.70.177.51}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:KbRedis@2024#Secure!Pwd}
       database: 0
       timeout: 5000ms
       lettuce:
@@ -61,7 +61,7 @@ spring:
       api-key: ${DEEPSEEK_API_KEY:}
       chat:
         options:
-          model: deepseek-chat
+          model: deepseek-v4-flash
           temperature: 0.3
 
 # ==========================================================
@@ -90,8 +90,8 @@ zhipu:
 # ==========================================================
 minio:
   endpoint: ${MINIO_ENDPOINT:http://81.70.177.51:9000}
-  access-key: ${MINIO_ACCESS_KEY:}
-  secret-key: ${MINIO_SECRET_KEY:}
+  access-key: ${MINIO_ACCESS_KEY:kb-minio-admin}
+  secret-key: ${MINIO_SECRET_KEY:KbMinio@2024#Secure!Pwd}
 
 # ==========================================================
 # Milvus 向量数据库配置（自定义属性，由 MilvusConfig.java 读取）
@@ -133,8 +133,11 @@ async:
 # Docker 内通过服务名互访，本地开发改为 localhost
 # ==========================================================
 sidecar:
-  parser-url: ${PARSER_URL:http://81.70.177.51:8090}
-  ragas-url: ${RAGAS_URL:http://81.70.177.51:8091}
+  # parser-url: ${PARSER_URL:http://81.70.177.51:8090}
+  # ragas-url: ${RAGAS_URL:http://81.70.177.51:8091}
+  parser-url: ${PARSER_URL:http://localhost:8090}
+  ragas-url: ${RAGAS_URL:http://localhost:8091}
+  eval-callback-url: ${EVAL_CALLBACK_URL:http://localhost:8082/internal/eval/callback}
 
 # ==========================================================
 # 开发环境日志：开启 SQL 日志 + 业务 DEBUG 日志

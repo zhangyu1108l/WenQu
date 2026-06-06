@@ -32,7 +32,9 @@ export class SseClient {
       });
 
       if (!response.ok) {
-        throw new Error(`SSE request failed: ${response.status}`);
+        const error = new Error(`SSE request failed: ${response.status}`);
+        error.status = response.status;
+        throw error;
       }
 
       if (!response.body) {
@@ -45,7 +47,7 @@ export class SseClient {
         return;
       }
 
-      this.onError(error?.message || 'SSE connection failed');
+      this.onError(error?.message || 'SSE connection failed', error);
     }
   }
 

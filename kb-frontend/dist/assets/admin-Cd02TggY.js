@@ -1,0 +1,1 @@
+import{g as a,h as n,f as e}from"./request-lnYwumHl.js";const r=t=>e("/admin/tenants",t),i=()=>a("/admin/tenants"),u=(t,s)=>n(`/admin/tenants/${t}/status`,s),c=t=>a("/admin/users",t),d=(t,s)=>n(`/admin/users/${t}/role`,s);export{c as a,d as b,r as c,i as g,u};

@@ -10,13 +10,133 @@ PDF 文档解析器模块
 """
 
 import logging
+import os
+import shutil
+from pathlib import Path
 from typing import List
 
 import pdfplumber
 import pytesseract
+from pytesseract import TesseractError, TesseractNotFoundError
 from io import BytesIO
 
 logger = logging.getLogger(__name__)
+
+REQUIRED_OCR_LANGUAGES = {"chi_sim", "eng"}
+PROJECT_TESSDATA_DIR = Path(__file__).resolve().parents[1] / "tessdata"
+
+
+class OcrDependencyError(RuntimeError):
+    """Raised when OCR is requested but the Tesseract runtime is unavailable."""
+
+
+class OcrExecutionError(RuntimeError):
+    """Raised when Tesseract is installed but cannot complete OCR."""
+
+
+def _configure_tesseract_cmd() -> None:
+    """Allow local Windows dev to run OCR without requiring PATH changes."""
+    configured_cmd = os.getenv("TESSERACT_CMD") or os.getenv("TESSERACT_PATH")
+    candidates = []
+    if configured_cmd:
+        candidates.append(configured_cmd)
+
+    if os.name == "nt":
+        candidates.extend([
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        ])
+
+    for candidate in candidates:
+        candidate_path = Path(candidate)
+        if candidate_path.exists():
+            pytesseract.pytesseract.tesseract_cmd = str(candidate_path)
+            return
+
+    found_cmd = shutil.which("tesseract")
+    if found_cmd:
+        pytesseract.pytesseract.tesseract_cmd = found_cmd
+
+
+_configure_tesseract_cmd()
+
+
+def _candidate_tessdata_dirs() -> List[Path]:
+    candidates = []
+
+    configured_dir = os.getenv("TESSDATA_DIR")
+    if configured_dir:
+        candidates.append(Path(configured_dir))
+
+    tessdata_prefix = os.getenv("TESSDATA_PREFIX")
+    if tessdata_prefix:
+        prefix_path = Path(tessdata_prefix)
+        candidates.append(prefix_path)
+        candidates.append(prefix_path / "tessdata")
+
+    candidates.append(PROJECT_TESSDATA_DIR)
+
+    if os.name == "nt":
+        candidates.extend([
+            Path(r"C:\Program Files\Tesseract-OCR\tessdata"),
+            Path(r"C:\Program Files (x86)\Tesseract-OCR\tessdata"),
+        ])
+
+    return candidates
+
+
+def _resolve_tessdata_dir() -> Path | None:
+    existing_dirs = []
+    for candidate in _candidate_tessdata_dirs():
+        if candidate.exists() and candidate.is_dir():
+            existing_dirs.append(candidate)
+            if all((candidate / f"{lang}.traineddata").exists() for lang in REQUIRED_OCR_LANGUAGES):
+                return candidate
+
+    return existing_dirs[0] if existing_dirs else None
+
+
+def _tessdata_config() -> str:
+    tessdata_dir = _resolve_tessdata_dir()
+    if not tessdata_dir:
+        return ""
+    return f'--tessdata-dir "{tessdata_dir}"'
+
+
+def get_ocr_status() -> dict:
+    tessdata_dir = _resolve_tessdata_dir()
+    tessdata_config = _tessdata_config()
+    try:
+        version = str(pytesseract.get_tesseract_version())
+        languages = set(pytesseract.get_languages(config=tessdata_config))
+    except TesseractNotFoundError:
+        return {
+            "available": False,
+            "tessdata_dir": str(tessdata_dir) if tessdata_dir else None,
+            "error": "Tesseract executable is unavailable.",
+        }
+    except TesseractError:
+        return {
+            "available": False,
+            "tessdata_dir": str(tessdata_dir) if tessdata_dir else None,
+            "error": "Tesseract language data cannot be read.",
+        }
+
+    missing_languages = sorted(REQUIRED_OCR_LANGUAGES - languages)
+    if missing_languages:
+        return {
+            "available": False,
+            "version": version,
+            "tessdata_dir": str(tessdata_dir) if tessdata_dir else None,
+            "missing_languages": missing_languages,
+            "error": "Tesseract is missing required OCR language data.",
+        }
+
+    return {
+        "available": True,
+        "version": version,
+        "tessdata_dir": str(tessdata_dir) if tessdata_dir else None,
+    }
 
 
 class PdfParser:
@@ -223,11 +343,22 @@ class PdfParser:
 
             # 使用 pytesseract 获取详细识别数据（含置信度和行列信息）
             # lang="chi_sim+eng" 支持中英文混合文档
-            ocr_data = pytesseract.image_to_data(
-                pil_image,
-                lang="chi_sim+eng",
-                output_type=pytesseract.Output.DICT,
-            )
+            try:
+                ocr_data = pytesseract.image_to_data(
+                    pil_image,
+                    lang="chi_sim+eng",
+                    config=_tessdata_config(),
+                    output_type=pytesseract.Output.DICT,
+                )
+            except TesseractNotFoundError as exc:
+                raise OcrDependencyError(
+                    "OCR runtime is unavailable: install Tesseract OCR and the chi_sim/eng language packs, "
+                    "or set TESSERACT_CMD to tesseract.exe."
+                ) from exc
+            except TesseractError as exc:
+                raise OcrExecutionError(
+                    "OCR execution failed: verify Tesseract has chi_sim and eng language data installed."
+                ) from exc
 
             # 按行合并 OCR 识别结果
             # ocr_data 中每个元素是一个"词"，通过 block_num + line_num 确定所属行

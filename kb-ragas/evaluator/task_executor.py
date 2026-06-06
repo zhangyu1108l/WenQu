@@ -122,7 +122,8 @@ class TaskExecutor:
                 avg_context_precision=self._average_value(averages, "context_precision"),
             )
 
-            await callback.post_callback(request.callback_url, batch_result)
+            if not await callback.post_callback(request.callback_url, batch_result):
+                raise RuntimeError("Callback failed after evaluation completed")
 
             logger.info(
                 "batch_id=%s evaluation completed, avg_faithfulness=%s",

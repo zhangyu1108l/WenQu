@@ -1,8 +1,14 @@
 package com.kb.app.module.eval.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.kb.app.module.eval.entity.EvalCaseDO;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 评估用例表 Mapper — 对应数据库 eval_case 表。
@@ -24,4 +30,20 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface EvalCaseMapper extends BaseMapper<EvalCaseDO> {
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("""
+            SELECT *
+            FROM eval_case
+            ORDER BY created_at DESC, id DESC
+            """)
+    List<EvalCaseDO> selectAllIgnoreTenant();
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("SELECT * FROM eval_case WHERE id = #{id} LIMIT 1")
+    EvalCaseDO selectByIdIgnoreTenant(@Param("id") Long id);
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Delete("DELETE FROM eval_case WHERE id = #{id}")
+    int deleteByIdIgnoreTenant(@Param("id") Long id);
 }

@@ -1,5 +1,6 @@
 """Core Ragas evaluator for computing semantic RAG quality metrics."""
 
+import asyncio
 import math
 import os
 from typing import List
@@ -18,6 +19,10 @@ from models.schema import SingleEvalResult
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEFAULT_ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+DEFAULT_SINGLE_CASE_TIMEOUT_SECONDS = 180
 
 
 class RagasEvaluator:
@@ -38,7 +43,7 @@ class RagasEvaluator:
         # 避免同一评估样本因为随机采样得到不同分数。
         self.llm = ChatOpenAI(
             model="deepseek-chat",
-            base_url=os.getenv("DEEPSEEK_BASE_URL"),
+            base_url=os.getenv("DEEPSEEK_BASE_URL") or DEFAULT_DEEPSEEK_BASE_URL,
             api_key=os.getenv("DEEPSEEK_API_KEY"),
             temperature=0,
         )
@@ -47,7 +52,7 @@ class RagasEvaluator:
         # 从 answer 逆向生成问题，再与原始 question 计算向量相似度。
         self.embeddings = OpenAIEmbeddings(
             model="embedding-3",
-            base_url=os.getenv("ZHIPU_BASE_URL"),
+            base_url=os.getenv("ZHIPU_BASE_URL") or DEFAULT_ZHIPU_BASE_URL,
             api_key=os.getenv("ZHIPU_API_KEY"),
         )
 
@@ -89,12 +94,16 @@ class RagasEvaluator:
 
             # raise_exceptions=False 表示单个指标计算失败时不直接抛异常，
             # Ragas 会继续尝试其他指标，并把失败指标记录为 NaN。
-            result = evaluate(
-                dataset=dataset,
-                metrics=self.metrics,
-                llm=self.llm,
-                embeddings=self.embeddings,
-                raise_exceptions=False,
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    evaluate,
+                    dataset=dataset,
+                    metrics=self.metrics,
+                    llm=self.llm,
+                    embeddings=self.embeddings,
+                    raise_exceptions=False,
+                ),
+                timeout=self._single_case_timeout_seconds(),
             )
 
             result_df = result.to_pandas()
@@ -122,6 +131,14 @@ class RagasEvaluator:
                 "context_recall": safe_score(context_recall_score),
                 "context_precision": safe_score(context_precision_score),
             }
+        except asyncio.TimeoutError:
+            logger.exception("Ragas metrics timed out for one case")
+            return {
+                "faithfulness": None,
+                "answer_relevancy": None,
+                "context_recall": None,
+                "context_precision": None,
+            }
         except Exception:
             # 单个用例评估失败不应中断整批评估；上层仍可回传该用例的空指标。
             logger.exception("Failed to evaluate Ragas metrics for one case")
@@ -131,6 +148,20 @@ class RagasEvaluator:
                 "context_recall": None,
                 "context_precision": None,
             }
+
+    def _single_case_timeout_seconds(self) -> int:
+        raw_value = os.getenv("RAGAS_SINGLE_CASE_TIMEOUT_SECONDS", "").strip()
+        if not raw_value:
+            return DEFAULT_SINGLE_CASE_TIMEOUT_SECONDS
+        try:
+            return max(1, int(raw_value))
+        except ValueError:
+            logger.warning(
+                "Invalid RAGAS_SINGLE_CASE_TIMEOUT_SECONDS=%s, using default=%s",
+                raw_value,
+                DEFAULT_SINGLE_CASE_TIMEOUT_SECONDS,
+            )
+            return DEFAULT_SINGLE_CASE_TIMEOUT_SECONDS
 
     def calculate_averages(self, results: List[SingleEvalResult]) -> dict:
         """Calculate batch averages while ignoring failed metric values."""

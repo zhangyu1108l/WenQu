@@ -67,6 +67,7 @@ export const useChatStore = defineStore('chat', {
       this.messages.push({
         role: 1,
         content: '',
+        query: question,
         sourceChunks: []
       });
     },

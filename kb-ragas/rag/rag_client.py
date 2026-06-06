@@ -20,7 +20,7 @@ class RagClient:
         # a synchronous requests call would block the event loop.
         # The 120s read timeout gives enough room for embedding, vector search,
         # and LLM generation, which can be slower than ordinary HTTP calls.
-        self.session = httpx.AsyncClient(timeout=timeout)
+        self.session = httpx.AsyncClient(timeout=timeout, trust_env=False)
 
     async def get_rag_answer(self, question: str, tenant_id: int) -> dict:
         """Call the Java internal RAG endpoint and return answer plus contexts."""

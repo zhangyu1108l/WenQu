@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from chunker.smart_chunker import SmartChunker
 from models.schema import ParseResponse
-from parser.pdf_parser import PdfParser
+from parser.pdf_parser import OcrDependencyError, OcrExecutionError, PdfParser, get_ocr_status
 from parser.word_parser import WordParser
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,18 @@ async def validation_exception_handler(_, exc: RequestValidationError) -> JSONRe
     return _error_response(400, "请求参数校验失败")
 
 
+@app.exception_handler(OcrDependencyError)
+async def ocr_dependency_exception_handler(_, exc: OcrDependencyError) -> JSONResponse:
+    logger.exception("OCR runtime dependency is unavailable")
+    return _error_response(500, str(exc))
+
+
+@app.exception_handler(OcrExecutionError)
+async def ocr_execution_exception_handler(_, exc: OcrExecutionError) -> JSONResponse:
+    logger.exception("OCR execution failed")
+    return _error_response(500, str(exc))
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(_, exc: Exception) -> JSONResponse:
     # 解析器或分块器的非预期异常也保持统一响应结构。
@@ -54,7 +66,7 @@ async def global_exception_handler(_, exc: Exception) -> JSONResponse:
 @app.get("/health")
 async def health() -> dict:
     # Java 主服务启动时调用此接口，确认解析侧车是否就绪。
-    return {"status": "ok", "service": "kb-parser"}
+    return {"status": "ok", "service": "kb-parser", "ocr": get_ocr_status()}
 
 
 @app.post("/parse", response_model=ParseResponse)

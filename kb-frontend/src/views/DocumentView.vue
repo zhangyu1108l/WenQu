@@ -1,7 +1,10 @@
 <template>
   <div class="document-view">
-    <header class="document-toolbar">
-      <h2>知识库文档</h2>
+    <header class="page-header">
+      <div>
+        <h2>文档管理</h2>
+        <p>上传、版本、下载、过期时间与异步处理进度均来自后端接口。</p>
+      </div>
 
       <el-upload
         v-if="canManageDocs"
@@ -18,29 +21,40 @@
           <el-icon>
             <UploadFilled />
           </el-icon>
-          <span>上传文档</span>
+          <span>上传 PDF / DOCX</span>
         </el-button>
       </el-upload>
     </header>
 
-    <section class="search-bar">
-      <el-input
-        v-model="keyword"
-        clearable
-        placeholder="搜索文档名称"
-        :prefix-icon="Search"
-      />
+    <section class="status-grid">
+      <article
+        v-for="stat in docStatusSummary"
+        :key="stat.label"
+        class="status-card"
+      >
+        <span>{{ stat.label }}</span>
+        <strong>{{ stat.value }}</strong>
+        <div class="status-progress">
+          <i :style="{ width: `${stat.percent}%`, background: stat.color }" />
+        </div>
+        <small>{{ stat.description }}</small>
+      </article>
     </section>
 
     <section v-if="activeUploadTasks.length" class="upload-task-panel">
-      <header class="upload-task-panel__header">
-        <span>上传处理进度</span>
+      <header class="panel-head">
+        <div>
+          <h3>文档处理任务</h3>
+          <p>仅轮询上传接口返回的 taskId：/api/tasks/{taskId}/status</p>
+        </div>
       </header>
 
       <TaskProgressBar
         v-for="task in activeUploadTasks"
         :key="task.taskId"
         :doc-id="task.docId"
+        :initial-progress="task.progress"
+        :initial-status="task.status"
         :task-id="task.taskId"
         @done="handleTaskDone"
         @failed="handleTaskFailed"
@@ -48,7 +62,22 @@
       />
     </section>
 
-    <section class="document-table-wrap">
+    <section class="document-card">
+      <header class="panel-head">
+        <div>
+          <h3>知识库文档</h3>
+          <p>支持按后端 keyword 参数筛选</p>
+        </div>
+
+        <el-input
+          v-model="keyword"
+          class="keyword-input"
+          clearable
+          placeholder="搜索文档名称"
+          :prefix-icon="Search"
+        />
+      </header>
+
       <el-table
         v-loading="loading"
         :data="documentStore.docList"
@@ -56,7 +85,7 @@
         row-key="id"
         stripe
       >
-        <el-table-column label="文档名称" min-width="220">
+        <el-table-column label="文档名称" min-width="240">
           <template #default="{ row }">
             <span class="doc-title">{{ getDocTitle(row) }}</span>
           </template>
@@ -92,9 +121,16 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" :width="canManageDocs ? 310 : 170" fixed="right">
+        <el-table-column label="操作" :width="canManageDocs ? 360 : 220" fixed="right">
           <template #default="{ row }">
             <el-space :size="4" wrap>
+              <el-button link type="primary" @click="openDetailDialog(row)">
+                <el-icon>
+                  <View />
+                </el-icon>
+                <span>详情</span>
+              </el-button>
+
               <el-button link type="primary" @click="handleDownload(row)">
                 <el-icon>
                   <Download />
@@ -142,20 +178,51 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <footer class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="size"
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :page-sizes="[10, 20, 50]"
+          :total="documentStore.total"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </footer>
     </section>
 
-    <footer class="pagination-wrap">
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="size"
-        background
-        layout="total, sizes, prev, pager, next, jumper"
-        :page-sizes="[10, 20, 50]"
-        :total="documentStore.total"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
-      />
-    </footer>
+    <el-dialog v-model="detailDialogVisible" title="文档详情" width="640px">
+      <el-descriptions
+        v-loading="detailLoading"
+        border
+        :column="2"
+        size="large"
+      >
+        <el-descriptions-item label="文档名称" :span="2">
+          {{ getDocTitle(detailDoc) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="文件类型">
+          {{ getFileType(detailDoc) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="处理状态">
+          <DocStatusBadge :status="getDocStatus(detailDoc)" />
+        </el-descriptions-item>
+        <el-descriptions-item label="当前版本">
+          {{ getRowVersionText(detailDoc) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="文件大小">
+          {{ formatFileSize(getFileSize(getCurrentVersion(detailDoc))) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="过期时间">
+          {{ formatExpireAt(getExpireAt(detailDoc)) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="上传时间">
+          {{ formatDateTime(getCreatedAt(detailDoc)) }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
 
     <el-dialog v-model="versionDialogVisible" title="版本历史" width="680px">
       <el-table
@@ -226,7 +293,8 @@ import {
   Delete,
   Download,
   Search,
-  UploadFilled
+  UploadFilled,
+  View
 } from '@element-plus/icons-vue';
 import * as documentApi from '../api/document';
 import DocStatusBadge from '../components/DocStatusBadge.vue';
@@ -243,6 +311,9 @@ const page = ref(1);
 const size = ref(10);
 const loading = ref(false);
 const uploading = ref(false);
+const detailDialogVisible = ref(false);
+const detailLoading = ref(false);
+const detailDoc = ref(null);
 const versionDialogVisible = ref(false);
 const versionLoading = ref(false);
 const versionList = ref([]);
@@ -252,7 +323,7 @@ const expireDoc = ref(null);
 const expireAt = ref('');
 let searchTimer = null;
 
-const canManageDocs = computed(() => Number(authStore.userInfo?.role) === 1);
+const canManageDocs = computed(() => [0, 1].includes(Number(authStore.userInfo?.role)));
 
 const activeUploadTasks = computed(() =>
   Array.from(documentStore.uploadingTasks.entries()).map(([taskId, task]) => ({
@@ -271,7 +342,7 @@ const getFileType = (row) => {
   return fileType ? String(fileType).toUpperCase() : '-';
 };
 
-const getDocStatus = (row) => row?.status || 'PENDING';
+const getDocStatus = (row) => String(row?.status || 'PENDING').toUpperCase();
 
 const getExpireAt = (row) => row?.expireAt ?? row?.expire_at ?? null;
 
@@ -298,6 +369,41 @@ const isVersionActive = (row) => {
   const active = row?.isActive ?? row?.is_active;
   return active === true || active === 1;
 };
+
+const documents = computed(() => documentStore.docList || []);
+
+const docStatusSummary = computed(() => {
+  const total = documents.value.length || 1;
+  const count = (status) =>
+    documents.value.filter((doc) => getDocStatus(doc) === status).length;
+  const pending = documents.value.filter((doc) =>
+    ['PENDING', 'PARSING', 'EMBEDDING'].includes(getDocStatus(doc))
+  ).length;
+
+  return [
+    {
+      label: '处理中任务',
+      value: pending,
+      percent: Math.min(100, (pending / total) * 100),
+      color: '#1769ff',
+      description: 'PENDING / PARSING / EMBEDDING'
+    },
+    {
+      label: 'READY 文档',
+      value: count('READY'),
+      percent: Math.min(100, (count('READY') / total) * 100),
+      color: '#16b978',
+      description: '可被 RAG 检索引用'
+    },
+    {
+      label: 'FAILED',
+      value: count('FAILED'),
+      percent: Math.min(100, (count('FAILED') / total) * 100),
+      color: '#f05252',
+      description: '失败原因由任务 errorMsg 展示'
+    }
+  ];
+});
 
 const normalizeList = (data) => {
   if (Array.isArray(data)) {
@@ -436,6 +542,24 @@ const handleDownload = async (row) => {
   window.open(url, '_blank', 'noopener');
 };
 
+const openDetailDialog = async (row) => {
+  const docId = getDocId(row);
+
+  if (!docId) {
+    return;
+  }
+
+  detailDoc.value = row;
+  detailDialogVisible.value = true;
+  detailLoading.value = true;
+
+  try {
+    detailDoc.value = await documentApi.getDocDetail(docId);
+  } finally {
+    detailLoading.value = false;
+  }
+};
+
 const openVersionDialog = async (row) => {
   const docId = getDocId(row);
 
@@ -546,132 +670,150 @@ onUnmounted(() => {
 
 <style scoped>
 .document-view {
-  min-height: calc(100vh - var(--topbar-height));
+  min-height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-secondary);
-  padding: 20px 24px;
+  gap: 16px;
+  padding: 18px;
 }
 
-.document-toolbar {
+.page-header,
+.document-card,
+.upload-task-panel,
+.status-card {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(16, 24, 40, 0.04);
+}
+
+.page-header {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 20px;
+}
+
+.page-header h2,
+.panel-head h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 22px;
+  font-weight: 850;
+}
+
+.page-header p,
+.panel-head p {
+  margin: 8px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.status-card {
+  padding: 18px;
+}
+
+.status-card span {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.status-card strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--color-text-primary);
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.status-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.status-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf2f7;
+  margin-top: 12px;
+}
+
+.status-progress i {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+}
+
+.upload-task-panel {
+  padding: 16px 18px;
+}
+
+.upload-task-panel :deep(.task-progress-bar) {
+  margin-top: 12px;
+}
+
+.document-card {
+  overflow: hidden;
+}
+
+.panel-head {
   min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px 10px 0 0;
-  background: #ffffff;
-  padding: 0 20px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 18px;
 }
 
-.document-toolbar h2 {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.3;
+.panel-head h3 {
+  font-size: 18px;
 }
 
-.search-bar {
-  border-right: 1px solid var(--color-border);
-  border-left: 1px solid var(--color-border);
-  padding: 14px 20px;
-  background: #ffffff;
-}
-
-.search-bar :deep(.el-input) {
-  max-width: 420px;
-}
-
-.upload-task-panel {
-  display: grid;
-  gap: 12px;
-  border: 1px solid var(--color-border);
-  border-bottom: 0;
-  padding: 14px 20px 18px;
-  background: #ffffff;
-}
-
-.upload-task-panel__header {
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.document-table-wrap {
-  min-height: 0;
-  flex: 1;
-  overflow: auto;
-  border: 1px solid var(--color-border);
-  border-bottom: 0;
-  background: #ffffff;
-  padding: 0;
-}
-
-.document-table-wrap :deep(.el-table) {
-  --el-table-header-bg-color: #ffffff;
-  --el-table-row-hover-bg-color: var(--color-primary-soft);
+.keyword-input {
+  width: 260px;
 }
 
 .doc-title {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
   color: var(--color-text-primary);
-  font-weight: 600;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  white-space: nowrap;
+  font-weight: 800;
 }
 
 .pagination-wrap {
   display: flex;
   justify-content: flex-end;
-  border: 1px solid var(--color-border);
-  border-radius: 0 0 10px 10px;
-  background: #ffffff;
-  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+  padding: 14px 18px;
 }
 
-:deep(.el-dialog__body) {
-  padding-top: 8px;
-}
-
-:deep(.el-date-editor.el-input) {
-  width: 100%;
-}
-
-@media (max-width: 900px) {
-  .document-toolbar,
-  .search-bar,
-  .document-table-wrap,
-  .pagination-wrap,
-  .upload-task-panel {
-    padding-left: 16px;
-    padding-right: 16px;
+@media (max-width: 980px) {
+  .status-grid {
+    grid-template-columns: 1fr;
   }
 
-  .document-view {
-    padding: 12px;
-  }
-
-  .document-toolbar {
+  .page-header,
+  .panel-head {
     align-items: flex-start;
     flex-direction: column;
-    padding-top: 16px;
-    padding-bottom: 16px;
+    padding: 16px 18px;
   }
 
-  .search-bar :deep(.el-input) {
-    max-width: none;
-  }
-
-  .pagination-wrap {
-    justify-content: flex-start;
-    overflow-x: auto;
+  .keyword-input {
+    width: 100%;
   }
 }
 </style>

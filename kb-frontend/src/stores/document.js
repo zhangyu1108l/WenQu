@@ -35,11 +35,11 @@ export const useDocumentStore = defineStore('document', {
       return pageData;
     },
 
-    startUploadTask(docId, taskId) {
+    startUploadTask(docId, taskId, initialStatus = 'PENDING', initialProgress = 0) {
       this.uploadingTasks.set(Number(taskId), {
         docId: Number(docId),
-        progress: 0,
-        status: 'PENDING'
+        progress: Math.max(0, Math.min(Number(initialProgress) || 0, 100)),
+        status: initialStatus || 'PENDING'
       });
     },
 

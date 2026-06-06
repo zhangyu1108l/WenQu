@@ -1,88 +1,137 @@
 <template>
   <main class="login-page">
-    <div class="login-aura" aria-hidden="true" />
+    <section class="login-hero">
+      <div class="hero-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <span />
+        </span>
+        <strong>WenQu</strong>
+      </div>
+      <h1>企业级 RAG 知识库系统</h1>
+      <p>安全、可靠、可追溯的企业知识中枢，支持文档解析、向量检索、流式问答与 Ragas 评估。</p>
+      <div class="hero-points">
+        <span>多租户隔离</span>
+        <span>SSE 流式问答</span>
+        <span>来源可核对</span>
+      </div>
+    </section>
 
-    <section class="login-shell">
-      <header class="login-brand">
-        <div class="brand-mark" aria-hidden="true">
-          <span class="brand-mark__core" />
+    <section class="login-card" aria-label="账号登录">
+      <header class="card-header">
+        <div>
+          <h2>{{ authMode === 'login' ? '账号登录' : '注册账号' }}</h2>
+          <p>{{ authMode === 'login' ? '登录后进入企业知识库工作台' : '创建账号后自动进入工作台' }}</p>
         </div>
-        <h1>WenQu</h1>
-        <p>企 业 智 能 知 识 库</p>
+        <button class="text-button" type="button" @click="toggleAuthMode">
+          {{ authMode === 'login' ? '注册账号' : '返回登录' }}
+        </button>
       </header>
 
-      <section class="login-card" aria-label="登录">
-        <el-form
-          ref="loginFormRef"
-          class="login-form"
-          :model="loginForm"
-          :rules="loginRules"
-          label-position="top"
-          @keyup.enter="handleLogin"
+      <div class="auth-switch" role="tablist" aria-label="认证方式">
+        <button
+          class="auth-switch__item"
+          :class="{ active: authMode === 'login' }"
+          type="button"
+          @click="setAuthMode('login')"
         >
-          <el-form-item label="租户代码" prop="tenantCode">
-            <el-input
-              v-model.trim="loginForm.tenantCode"
-              autocomplete="organization"
-              clearable
-              placeholder="请输入租户代码"
-              :prefix-icon="OfficeBuilding"
-              size="large"
-            />
-          </el-form-item>
+          登录
+        </button>
+        <button
+          class="auth-switch__item"
+          :class="{ active: authMode === 'register' }"
+          type="button"
+          @click="setAuthMode('register')"
+        >
+          注册
+        </button>
+      </div>
 
-          <el-form-item label="用户名" prop="username">
-            <el-input
-              v-model.trim="loginForm.username"
-              autocomplete="username"
-              clearable
-              placeholder="请输入用户名"
-              :prefix-icon="User"
-              size="large"
-            />
-          </el-form-item>
-
-          <el-form-item label="密码" prop="password">
-            <el-input
-              v-model="loginForm.password"
-              autocomplete="current-password"
-              placeholder="请输入密码"
-              :prefix-icon="Lock"
-              show-password
-              size="large"
-              type="password"
-            />
-          </el-form-item>
-
-          <div class="login-options">
-            <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-            <button class="text-button" type="button">忘记密码?</button>
-          </div>
-
-          <el-button
-            class="login-button"
-            :loading="loading"
+      <el-form
+        ref="loginFormRef"
+        class="login-form"
+        :model="loginForm"
+        :rules="authRules"
+        label-position="top"
+        @keyup.enter="handleSubmit"
+      >
+        <el-form-item label="租户代码" prop="tenantCode">
+          <el-input
+            v-model.trim="loginForm.tenantCode"
+            autocomplete="organization"
+            clearable
+            placeholder="例如 acme-tech"
+            :prefix-icon="OfficeBuilding"
             size="large"
-            type="primary"
-            @click="handleLogin"
-          >
-            登录
-          </el-button>
-        </el-form>
+          />
+        </el-form-item>
 
-        <footer class="login-footer">
-          <span>还没有账号?</span>
-          <button class="text-button is-strong" type="button">立即注册</button>
-        </footer>
-      </section>
+        <el-form-item label="用户名" prop="username">
+          <el-input
+            v-model.trim="loginForm.username"
+            autocomplete="username"
+            clearable
+            placeholder="请输入用户名"
+            :prefix-icon="User"
+            size="large"
+          />
+        </el-form-item>
 
-      <p class="copyright">© 2026 WenQu. 保留所有权利。</p>
+        <el-form-item label="密码" prop="password">
+          <el-input
+            v-model="loginForm.password"
+            :autocomplete="authMode === 'login' ? 'current-password' : 'new-password'"
+            placeholder="请输入密码"
+            :prefix-icon="Lock"
+            show-password
+            size="large"
+            type="password"
+          />
+        </el-form-item>
+
+        <el-form-item
+          v-if="authMode === 'register'"
+          label="确认密码"
+          prop="confirmPassword"
+        >
+          <el-input
+            v-model="loginForm.confirmPassword"
+            autocomplete="new-password"
+            placeholder="请再次输入密码"
+            :prefix-icon="Lock"
+            show-password
+            size="large"
+            type="password"
+          />
+        </el-form-item>
+
+        <div class="form-meta">
+          <el-checkbox disabled>记住租户</el-checkbox>
+          <span>JWT 登录态由后端校验</span>
+        </div>
+
+        <el-button
+          class="login-button"
+          :loading="loading"
+          size="large"
+          type="primary"
+          @click="handleSubmit"
+        >
+          {{ submitText }}
+        </el-button>
+      </el-form>
+
+      <footer class="login-footer">
+        <span>{{ footerText }}</span>
+        <button class="text-button is-strong" type="button" @click="toggleAuthMode">
+          {{ footerActionText }}
+        </button>
+      </footer>
     </section>
   </main>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, nextTick, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Lock, OfficeBuilding, User } from '@element-plus/icons-vue';
@@ -93,27 +142,70 @@ const authStore = useAuthStore();
 
 const loginFormRef = ref(null);
 const loading = ref(false);
-const rememberMe = ref(false);
+const authMode = ref('login');
 
 const loginForm = reactive({
   tenantCode: '',
   username: '',
-  password: ''
+  password: '',
+  confirmPassword: ''
 });
 
-const loginRules = {
-  tenantCode: [{ required: true, message: '请输入租户标识', trigger: 'blur' }],
+const validateConfirmPassword = (_rule, value, callback) => {
+  if (authMode.value !== 'register') {
+    callback();
+    return;
+  }
+
+  if (!value) {
+    callback(new Error('请再次输入密码'));
+    return;
+  }
+
+  if (value !== loginForm.password) {
+    callback(new Error('两次输入的密码不一致'));
+    return;
+  }
+
+  callback();
+};
+
+const authRules = computed(() => ({
+  tenantCode: [{ required: true, message: '请输入租户代码', trigger: 'blur' }],
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 2, max: 50, message: '用户名长度为 2-50 个字符', trigger: 'blur' }
+    { min: 2, max: 20, message: '用户名长度为 2-20 个字符', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 64, message: '密码长度为 6-64 个字符', trigger: 'blur' }
-  ]
+    { min: 6, max: 20, message: '密码长度为 6-20 个字符', trigger: 'blur' }
+  ],
+  confirmPassword:
+    authMode.value === 'register'
+      ? [{ validator: validateConfirmPassword, trigger: ['blur', 'change'] }]
+      : []
+}));
+
+const submitText = computed(() => (authMode.value === 'login' ? '立即登录' : '注册并登录'));
+const footerText = computed(() => (authMode.value === 'login' ? '还没有账号？' : '已有账号？'));
+const footerActionText = computed(() => (authMode.value === 'login' ? '立即注册' : '返回登录'));
+
+const setAuthMode = async (mode) => {
+  if (authMode.value === mode) {
+    return;
+  }
+
+  authMode.value = mode;
+  loginForm.confirmPassword = '';
+  await nextTick();
+  loginFormRef.value?.clearValidate();
 };
 
-const handleLogin = async () => {
+const toggleAuthMode = () => {
+  setAuthMode(authMode.value === 'login' ? 'register' : 'login');
+};
+
+const handleSubmit = async () => {
   if (loading.value) {
     return;
   }
@@ -126,14 +218,23 @@ const handleLogin = async () => {
   loading.value = true;
 
   try {
-    await authStore.login({
+    const payload = {
       tenantCode: loginForm.tenantCode,
       username: loginForm.username,
       password: loginForm.password
-    });
+    };
+
+    if (authMode.value === 'login') {
+      await authStore.login(payload);
+      ElMessage.success('登录成功');
+    } else {
+      await authStore.register(payload);
+      ElMessage.success('注册成功');
+    }
+
     router.push('/chat');
-  } catch (error) {
-    ElMessage.error(error?.message || '登录失败，请检查账号信息');
+  } catch {
+    // request interceptor has already shown the server-side error message.
   } finally {
     loading.value = false;
   }
@@ -142,180 +243,209 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-page {
-  position: relative;
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) 480px;
+  align-items: center;
+  gap: 52px;
   overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 80%, rgba(23, 105, 255, 0.11), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
+  padding: 64px clamp(36px, 7vw, 120px);
+}
+
+.login-hero {
+  max-width: 640px;
+}
+
+.hero-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 40px 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 249, 255, 0.96)),
-    linear-gradient(135deg, #f8fbff 0%, #ffffff 48%, #eef5ff 100%);
+  gap: 14px;
+  margin-bottom: 42px;
 }
 
-.login-page::before,
-.login-page::after {
-  position: absolute;
-  right: -8%;
-  bottom: -22%;
-  left: -8%;
-  height: 38%;
-  content: '';
-  pointer-events: none;
-}
-
-.login-page::before {
-  background:
-    repeating-linear-gradient(
-      168deg,
-      rgba(63, 109, 246, 0.14) 0 1px,
-      transparent 1px 16px
-    );
-  clip-path: ellipse(68% 54% at 36% 100%);
-}
-
-.login-page::after {
-  background: linear-gradient(120deg, rgba(63, 109, 246, 0.18), rgba(34, 199, 232, 0.2));
-  clip-path: ellipse(74% 58% at 22% 100%);
-  opacity: 0.72;
-}
-
-.login-aura {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(120deg, rgba(63, 109, 246, 0.08), transparent 30%),
-    linear-gradient(240deg, rgba(34, 199, 232, 0.08), transparent 38%);
-  pointer-events: none;
-}
-
-.login-shell {
+.brand-mark {
   position: relative;
-  z-index: 1;
-  width: min(420px, 100%);
+  width: 44px;
+  height: 44px;
   display: grid;
-  justify-items: center;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1769ff, #55d4ff);
+  box-shadow: 0 16px 32px rgba(23, 105, 255, 0.25);
+}
+
+.brand-mark::before,
+.brand-mark::after,
+.brand-mark span {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.82);
+  content: '';
+  transform: rotate(45deg);
+}
+
+.brand-mark::before {
+  left: 10px;
+  top: 10px;
+}
+
+.brand-mark::after {
+  right: 10px;
+  bottom: 10px;
+}
+
+.brand-mark span {
+  right: 10px;
+  top: 10px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.hero-brand strong {
+  color: #0b1220;
+  font-size: 32px;
+  font-weight: 850;
+}
+
+.login-hero h1 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 850;
+  line-height: 1.12;
+}
+
+.login-hero p {
+  max-width: 560px;
+  margin: 24px 0 0;
+  color: #475467;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.85;
+}
+
+.hero-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.hero-points span {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d6e4ff;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #175cd3;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .login-card {
   width: 100%;
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--color-shadow);
-  padding: 26px 28px 24px;
-  backdrop-filter: blur(18px);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 24px 60px rgba(16, 24, 40, 0.1);
+  padding: 28px;
 }
 
-.login-brand {
-  display: grid;
-  justify-items: center;
-  margin-bottom: 28px;
-  text-align: center;
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
 }
 
-.brand-mark {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #4f7cff, #20d2e7);
-  box-shadow: 0 16px 34px rgba(63, 109, 246, 0.25);
-  transform: rotate(45deg);
-}
-
-.brand-mark::before,
-.brand-mark::after,
-.brand-mark__core {
-  position: absolute;
-  content: '';
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.brand-mark::before {
-  width: 16px;
-  height: 16px;
-  top: 9px;
-  left: 9px;
-}
-
-.brand-mark::after {
-  width: 16px;
-  height: 16px;
-  right: 9px;
-  bottom: 9px;
-}
-
-.brand-mark__core {
-  width: 16px;
-  height: 16px;
-  right: 9px;
-  top: 9px;
-  background: rgba(255, 255, 255, 0.48);
-}
-
-.login-brand h1 {
-  margin: 26px 0 0;
+.card-header h2 {
+  margin: 0;
   color: var(--color-text-primary);
-  font-size: 34px;
-  font-weight: 760;
-  line-height: 1.1;
+  font-size: 24px;
+  font-weight: 850;
 }
 
-.login-brand p {
-  margin: 14px 0 0;
-  color: #344054;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.5;
+.card-header p {
+  margin: 8px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.auth-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  padding: 4px;
+  margin-bottom: 22px;
+}
+
+.auth-switch__item {
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.auth-switch__item.active {
+  background: #ffffff;
+  color: var(--color-primary);
+  box-shadow: 0 8px 16px rgba(16, 24, 40, 0.08);
 }
 
 .login-form :deep(.el-form-item) {
-  margin-bottom: 19px;
+  margin-bottom: 18px;
 }
 
 .login-form :deep(.el-form-item__label) {
   color: #344054;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .login-form :deep(.el-input__wrapper) {
   min-height: 44px;
-  background: rgba(255, 255, 255, 0.92);
+  background: #ffffff;
 }
 
-.login-options {
+.form-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: -2px 0 18px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
+  margin: -2px 0 20px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
 }
 
 .text-button {
   border: 0;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-primary);
   cursor: pointer;
   padding: 0;
-}
-
-.text-button:hover,
-.text-button.is-strong {
-  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .login-button {
   width: 100%;
   min-height: 46px;
-  font-weight: 650;
+  font-weight: 800;
 }
 
 .login-footer {
@@ -325,23 +455,22 @@ const handleLogin = async () => {
   margin-top: 22px;
   color: var(--color-text-secondary);
   font-size: 13px;
-  line-height: 1.5;
 }
 
-.copyright {
-  margin: 24px 0 0;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-@media (max-width: 480px) {
-  .login-card {
-    padding: 24px 20px 22px;
+@media (max-width: 920px) {
+  .login-page {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 38px 20px;
   }
 
-  .login-brand h1 {
-    font-size: 30px;
+  .login-hero {
+    max-width: none;
+  }
+
+  .login-card {
+    max-width: 480px;
+    justify-self: center;
   }
 }
 </style>

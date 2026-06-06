@@ -1,24 +1,17 @@
 <template>
   <div v-if="displayChunks.length" class="source-chunk-list">
-    <div class="source-chunk-heading">来源 ({{ displayChunks.length }})</div>
+    <div class="source-chunk-heading">引用来源</div>
 
     <article
       v-for="chunk in displayChunks"
       :key="chunk.key"
       class="source-chunk-card"
+      :title="chunk.contentText"
     >
-      <div class="source-chunk-card__header">
-        <span class="source-chunk-card__title">{{ chunk.headingPath }}</span>
-        <span v-if="chunk.pageNo" class="source-chunk-card__page">
-          第 {{ chunk.pageNo }} 页
-        </span>
-      </div>
-
-      <p class="source-chunk-card__content" v-html="chunk.highlightedContent" />
-
-      <div class="source-chunk-card__score">
-        相关度 {{ chunk.scoreText }}
-      </div>
+      <span class="source-chunk-card__index">{{ chunk.index }}</span>
+      <span class="source-chunk-card__title">{{ chunk.headingPath }}</span>
+      <span v-if="chunk.pageNo" class="source-chunk-card__page">P{{ chunk.pageNo }}</span>
+      <span class="source-chunk-card__score">{{ chunk.scoreText }}</span>
     </article>
   </div>
 </template>
@@ -37,38 +30,6 @@ const props = defineProps({
   }
 });
 
-const escapeHtml = (value) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const queryWords = computed(() => {
-  const words = props.query
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  return [...new Set(words)].sort((a, b) => b.length - a.length);
-});
-
-const highlightContent = (content) => {
-  const rawContent = String(content ?? '');
-  const preview = rawContent.length > 180 ? `${rawContent.slice(0, 180)}...` : rawContent;
-  const safePreview = escapeHtml(preview);
-
-  if (!queryWords.value.length) {
-    return safePreview;
-  }
-
-  const pattern = queryWords.value.map(escapeRegExp).join('|');
-  return safePreview.replace(new RegExp(`(${pattern})`, 'gi'), '<mark>$1</mark>');
-};
-
 const displayChunks = computed(() =>
   props.chunks.map((chunk, index) => {
     const score = Number(chunk?.score);
@@ -77,9 +38,10 @@ const displayChunks = computed(() =>
 
     return {
       key: chunk?.chunkId ?? chunk?.chunk_id ?? chunk?.id ?? `${headingPath}-${index}`,
+      index: index + 1,
       headingPath,
       pageNo,
-      highlightedContent: highlightContent(chunk?.content),
+      contentText: String(chunk?.content ?? ''),
       scoreText: Number.isFinite(score) ? score.toFixed(2) : '-'
     };
   })
@@ -88,85 +50,74 @@ const displayChunks = computed(() =>
 
 <style scoped>
 .source-chunk-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
 }
 
 .source-chunk-heading {
-  grid-column: 1 / -1;
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.4;
 }
 
 .source-chunk-card {
-  border: 1px solid var(--color-border);
+  min-width: 0;
+  max-width: 240px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d8e4f8;
   border-radius: 8px;
-  background: #ffffff;
-  padding: 9px 10px;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  background: #fbfdff;
+  color: var(--color-text-secondary);
+  padding: 0 8px 0 6px;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
 .source-chunk-card:hover {
   border-color: var(--color-primary-tint);
-  box-shadow: 0 8px 18px rgba(16, 24, 40, 0.05);
+  background: #ffffff;
+  color: var(--color-primary);
 }
 
-.source-chunk-card__header {
-  display: flex;
+.source-chunk-card__index {
+  width: 17px;
+  height: 17px;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .source-chunk-card__title {
   min-width: 0;
   overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.source-chunk-card__page {
-  flex: 0 0 auto;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.source-chunk-card__content {
-  margin: 0;
-  overflow: hidden;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.55;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  word-break: break-word;
-}
-
-.source-chunk-card__content :deep(mark) {
-  border-radius: 3px;
-  background: #fff3bf;
-  color: inherit;
-  padding: 0 2px;
-}
-
+.source-chunk-card__page,
 .source-chunk-card__score {
-  margin-top: 6px;
-  color: var(--color-text-secondary);
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
   font-size: 12px;
 }
 
 @media (max-width: 760px) {
-  .source-chunk-list {
-    grid-template-columns: 1fr;
+  .source-chunk-card {
+    max-width: 100%;
   }
 }
 </style>

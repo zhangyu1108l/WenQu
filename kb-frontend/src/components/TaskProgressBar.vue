@@ -26,13 +26,21 @@ const props = defineProps({
   docId: {
     type: [Number, String],
     default: null
+  },
+  initialStatus: {
+    type: String,
+    default: 'PENDING'
+  },
+  initialProgress: {
+    type: [Number, String],
+    default: 0
   }
 });
 
 const emit = defineEmits(['done', 'failed', 'progress']);
 
-const percentage = ref(0);
-const currentStatus = ref('PENDING');
+const percentage = ref(Math.max(0, Math.min(Number(props.initialProgress) || 0, 100)));
+const currentStatus = ref(props.initialStatus || 'PENDING');
 const errorMsg = ref('');
 let timerId = null;
 let requestPending = false;

@@ -37,7 +37,7 @@ async def post_callback(callback_url: str, result: BatchEvalResult) -> bool:
 
     headers = {"Content-Type": "application/json"}
 
-    async with httpx.AsyncClient(timeout=CALLBACK_TIMEOUT_SECONDS) as client:
+    async with httpx.AsyncClient(timeout=CALLBACK_TIMEOUT_SECONDS, trust_env=False) as client:
         for attempt in range(1, MAX_CALLBACK_ATTEMPTS + 1):
             try:
                 response = await client.post(
@@ -46,15 +46,29 @@ async def post_callback(callback_url: str, result: BatchEvalResult) -> bool:
                     headers=headers,
                 )
                 if response.status_code == 200:
-                    return True
+                    try:
+                        body = response.json()
+                    except ValueError:
+                        body = {}
+                    if not isinstance(body, dict) or body.get("code", 0) == 0:
+                        return True
 
-                logger.warning(
-                    "Callback attempt %s/%s failed batch_id=%s status_code=%s",
-                    attempt,
-                    MAX_CALLBACK_ATTEMPTS,
-                    result.batch_id,
-                    response.status_code,
-                )
+                    logger.warning(
+                        "Callback attempt %s/%s rejected batch_id=%s code=%s msg=%s",
+                        attempt,
+                        MAX_CALLBACK_ATTEMPTS,
+                        result.batch_id,
+                        body.get("code"),
+                        body.get("msg"),
+                    )
+                else:
+                    logger.warning(
+                        "Callback attempt %s/%s failed batch_id=%s status_code=%s",
+                        attempt,
+                        MAX_CALLBACK_ATTEMPTS,
+                        result.batch_id,
+                        response.status_code,
+                    )
             except Exception as exc:
                 logger.warning(
                     "Callback attempt %s/%s failed batch_id=%s error=%s",

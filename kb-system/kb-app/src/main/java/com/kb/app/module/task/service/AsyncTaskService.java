@@ -96,6 +96,8 @@ public interface AsyncTaskService {
      */
     TaskStatusVO getStatus(Long taskId);
 
+    TaskStatusVO getStatusIgnoreTenant(Long taskId);
+
     /**
      * 根据业务ID和任务类型查询最新任务状态。
      * <p>

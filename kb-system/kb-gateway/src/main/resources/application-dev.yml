@@ -18,7 +18,7 @@ spring:
     redis:
       host: ${REDIS_HOST:81.70.177.51}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:KbRedis@2024#Secure!Pwd}
       database: 0
       timeout: 5000ms
 

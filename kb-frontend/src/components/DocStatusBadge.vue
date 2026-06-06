@@ -37,5 +37,5 @@ const statusMap = {
   }
 };
 
-const statusConfig = computed(() => statusMap[props.status] || statusMap.PENDING);
+const statusConfig = computed(() => statusMap[String(props.status).toUpperCase()] || statusMap.PENDING);
 </script>

@@ -1,7 +1,10 @@
 <template>
   <div class="tenant-manage-view">
-    <header class="page-toolbar">
-      <h2>租户管理</h2>
+    <header class="page-header">
+      <div>
+        <h2>租户管理</h2>
+        <p>超级管理员可创建租户，并启用或禁用租户访问。</p>
+      </div>
 
       <el-button type="primary" @click="openCreateDialog">
         <el-icon>
@@ -11,7 +14,26 @@
       </el-button>
     </header>
 
-    <section class="table-wrap">
+    <section class="summary-grid">
+      <article class="summary-card">
+        <span>租户总数</span>
+        <strong>{{ tenantList.length }}</strong>
+      </article>
+      <article class="summary-card">
+        <span>启用租户</span>
+        <strong>{{ enabledTenantCount }}</strong>
+      </article>
+      <article class="summary-card">
+        <span>禁用租户</span>
+        <strong>{{ tenantList.length - enabledTenantCount }}</strong>
+      </article>
+    </section>
+
+    <section class="table-card">
+      <header class="panel-head">
+        <h3>租户列表</h3>
+      </header>
+
       <el-table
         v-loading="loading"
         :data="tenantList"
@@ -25,7 +47,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="标识 Code" min-width="180">
+        <el-table-column label="租户标识 Code" min-width="180">
           <template #default="{ row }">
             <span class="tenant-code">{{ row.code || '-' }}</span>
           </template>
@@ -45,13 +67,13 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="170" fixed="right">
           <template #default="{ row }">
             <el-popconfirm
               cancel-button-text="取消"
               confirm-button-text="确认"
               :title="getTenantStatusConfirmTitle(row)"
-              width="270"
+              width="280"
               @confirm="confirmTenantStatus(row)"
             >
               <template #reference>
@@ -129,7 +151,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
@@ -164,6 +186,10 @@ const createRules = {
   adminUsername: [{ required: true, message: '请输入初始管理员用户名', trigger: 'blur' }],
   adminPassword: [{ required: true, message: '请输入初始管理员密码', trigger: 'blur' }]
 };
+
+const enabledTenantCount = computed(() =>
+  tenantList.value.filter((tenant) => isTenantEnabled(tenant)).length
+);
 
 const normalizeList = (data) => {
   if (Array.isArray(data)) {
@@ -265,91 +291,107 @@ onMounted(() => {
 
 <style scoped>
 .tenant-manage-view {
-  min-height: calc(100vh - var(--topbar-height));
+  min-height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 16px;
   background: var(--color-bg-secondary);
-  padding: 20px 24px;
+  padding: 18px;
 }
 
-.page-toolbar {
-  min-height: 64px;
+.page-header,
+.table-card,
+.summary-card {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(16, 24, 40, 0.04);
+}
+
+.page-header {
+  min-height: 76px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px 10px 0 0;
-  background: #ffffff;
+  gap: 18px;
   padding: 0 20px;
 }
 
-.page-toolbar h2 {
+.page-header h2,
+.panel-head h3 {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: 22px;
+  font-weight: 850;
 }
 
-.table-wrap {
-  min-height: 0;
-  flex: 1;
-  overflow: auto;
-  border: 1px solid var(--color-border);
-  border-top: 0;
-  border-radius: 0 0 10px 10px;
-  background: #ffffff;
-  padding: 0;
-}
-
-.table-wrap :deep(.el-table) {
-  --el-table-header-bg-color: #ffffff;
-  --el-table-row-hover-bg-color: var(--color-primary-soft);
-}
-
-.entity-name,
-.tenant-code {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.entity-name {
-  font-weight: 600;
-}
-
-.tenant-code {
-  color: var(--color-text-secondary);
-  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+.page-header p {
+  margin: 8px 0 0;
+  color: var(--color-text-tertiary);
   font-size: 13px;
 }
 
-:deep(.el-dialog__body) {
-  padding-top: 8px;
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
 }
 
-@media (max-width: 900px) {
-  .page-toolbar,
-  .table-wrap {
-    padding-left: 16px;
-    padding-right: 16px;
+.summary-card {
+  padding: 18px;
+}
+
+.summary-card span {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.summary-card strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--color-text-primary);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+.panel-head {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 18px;
+}
+
+.panel-head h3 {
+  font-size: 18px;
+}
+
+.entity-name {
+  color: var(--color-text-primary);
+  font-weight: 800;
+}
+
+.tenant-code {
+  font-family: Consolas, 'SFMono-Regular', monospace;
+  color: #175cd3;
+  font-weight: 800;
+}
+
+@media (max-width: 860px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
   }
 
-  .tenant-manage-view {
-    padding: 12px;
-  }
-
-  .page-toolbar {
+  .page-header {
     align-items: flex-start;
     flex-direction: column;
-    padding-top: 16px;
-    padding-bottom: 16px;
+    padding: 16px 18px;
   }
 }
 </style>

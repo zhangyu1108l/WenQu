@@ -2,6 +2,7 @@ import { nextTick, onUnmounted, shallowRef } from 'vue';
 import { ElMessage } from 'element-plus';
 import * as chatApi from '../api/chat';
 import { useChatStore } from '../stores/chat';
+import { refreshAccessToken } from '../utils/request';
 import SseClient from '../utils/sse';
 
 const normalizeDonePayload = (payload) => {
@@ -48,33 +49,52 @@ export function useChat() {
     chatStore.startStreaming(normalizedQuestion);
     scrollToBottom();
 
-    const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
     const url = chatApi.buildAskUrl(chatStore.currentConvId);
-    const client = new SseClient(url, {
-      method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ question: normalizedQuestion }),
-      onToken: (token) => {
-        chatStore.appendToken(token);
-        scrollToBottom();
-      },
-      onDone: (payload) => {
-        chatStore.finishStreaming(normalizeDonePayload(payload));
-        scrollToBottom();
-        client.close();
-        sseClient.value = null;
-      },
-      onError: (message) => {
-        chatStore.failStreaming(message || 'SSE 连接异常');
-        ElMessage.error(message || 'SSE 连接异常');
-        client.close();
-        sseClient.value = null;
-      }
-    });
 
+    const createClient = (hasRetried = false) => {
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const client = new SseClient(url, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ question: normalizedQuestion }),
+        onToken: (token) => {
+          chatStore.appendToken(token);
+          scrollToBottom();
+        },
+        onDone: (payload) => {
+          chatStore.finishStreaming(normalizeDonePayload(payload));
+          scrollToBottom();
+          client.close();
+          sseClient.value = null;
+        },
+        onError: async (message, error) => {
+          client.close();
+
+          if (error?.status === 401 && !hasRetried) {
+            try {
+              await refreshAccessToken();
+              const retryClient = createClient(true);
+              sseClient.value = retryClient;
+              retryClient.connect();
+              return;
+            } catch {
+              // Fall through to the normal SSE failure path.
+            }
+          }
+
+          chatStore.failStreaming(message || 'SSE 连接异常');
+          ElMessage.error(message || 'SSE 连接异常');
+          sseClient.value = null;
+        }
+      });
+
+      return client;
+    };
+
+    const client = createClient();
     sseClient.value = client;
     client.connect();
     return true;

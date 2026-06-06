@@ -3,31 +3,35 @@
     class="message-row"
     :class="{ 'is-user': isUserMessage, 'is-assistant': !isUserMessage }"
   >
-    <div v-if="!isUserMessage" class="message-avatar" aria-hidden="true">AI</div>
-
     <div class="message-content">
-      <div class="message-bubble">
-        <div v-if="isUserMessage" class="message-text">
-          {{ message?.content }}
-        </div>
-
-        <div v-else class="message-markdown" v-html="renderedContent" />
-
-        <span
-          v-if="!isUserMessage && isStreaming"
-          class="message-cursor"
-        />
+      <div v-if="!isUserMessage" class="message-meta">
+        <span class="message-role">WenQu AI</span>
       </div>
 
-      <SourceChunkCard
-        v-if="!isUserMessage && sourceChunks.length"
-        class="message-sources"
-        :chunks="sourceChunks"
-        :query="sourceQuery"
-      />
-    </div>
+      <div class="message-line">
+        <div class="message-bubble">
+          <div v-if="isUserMessage" class="message-text">
+            {{ message?.content }}
+          </div>
 
-    <div v-if="isUserMessage" class="message-avatar is-user-avatar" aria-hidden="true">我</div>
+          <div v-else class="message-markdown" v-html="renderedContent" />
+
+          <span
+            v-if="!isUserMessage && isStreaming"
+            class="message-cursor"
+          />
+
+          <SourceChunkCard
+            v-if="!isUserMessage && sourceChunks.length"
+            class="message-sources"
+            :chunks="sourceChunks"
+            :query="sourceQuery"
+          />
+        </div>
+
+        <span v-if="isUserMessage" class="message-role message-role--inline">我</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -81,8 +85,8 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 .message-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
   width: 100%;
+  margin-bottom: 26px;
 }
 
 .message-row.is-user {
@@ -94,13 +98,67 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 }
 
 .message-content {
-  max-width: min(78%, var(--content-max-width));
+  width: min(100%, calc(var(--content-max-width) + 140px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.is-user .message-content {
+  width: auto;
+  max-width: min(58%, 560px);
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+.is-assistant .message-content {
+  margin-right: auto;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-tertiary);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.message-meta::before {
+  color: #8b7cff;
+  content: '✦';
+  font-size: 22px;
+  line-height: 1;
+}
+
+.message-role {
+  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.message-role--inline {
+  flex: 0 0 auto;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  padding: 0 2px;
+}
+
+.message-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.is-user .message-line {
+  justify-content: flex-end;
 }
 
 .message-bubble {
   position: relative;
   border-radius: 8px;
-  padding: 13px 15px;
+  padding: 18px 20px;
   font-size: 15px;
   line-height: 1.7;
   word-break: break-word;
@@ -108,36 +166,18 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 
 .is-user .message-bubble {
   border: 1px solid #dbe8ff;
-  background: var(--color-user-bubble);
+  background: #eaf2ff;
   color: var(--color-text-primary);
+  padding: 12px 16px;
+  box-shadow: none;
 }
 
 .is-assistant .message-bubble {
-  border: 1px solid var(--color-border);
+  border: 1px solid #d7dfea;
+  border-left: 3px solid var(--color-primary);
   background: #ffffff;
   color: var(--color-text-primary);
-  box-shadow: 0 10px 26px rgba(16, 24, 40, 0.05);
-}
-
-.message-avatar {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4f7cff, #23cce7);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 760;
-  line-height: 1;
-  box-shadow: 0 8px 18px rgba(63, 109, 246, 0.2);
-}
-
-.is-user-avatar {
-  background: #f2f5f9;
-  color: var(--color-text-secondary);
-  box-shadow: none;
+  box-shadow: 0 14px 30px rgba(16, 24, 40, 0.04);
 }
 
 .message-text {
@@ -198,7 +238,9 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 }
 
 .message-sources {
-  margin-top: 10px;
+  margin: 18px -20px -18px;
+  border-top: 1px solid var(--color-border);
+  padding: 14px 20px;
 }
 
 @keyframes cursor-blink {
@@ -215,7 +257,16 @@ const sourceQuery = computed(() => props.message?.query || props.message?.questi
 
 @media (max-width: 768px) {
   .message-content {
-    max-width: calc(100% - 38px);
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .is-user .message-content {
+    max-width: 86%;
+  }
+
+  .message-line {
+    gap: 8px;
   }
 }
 </style>

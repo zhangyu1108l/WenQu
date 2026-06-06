@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
         java_base_url = (
             os.getenv("JAVA_BASE_URL")
             or os.getenv("JAVA_APP_BASE_URL")
-            or "http://app:8081"
+            or "http://localhost:8082"
         ).strip()
         if not java_base_url:
             raise RuntimeError("JAVA_BASE_URL is empty")

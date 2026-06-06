@@ -1,10 +1,33 @@
 <template>
   <div class="user-manage-view">
-    <header class="page-toolbar">
-      <h2>用户管理</h2>
+    <header class="page-header">
+      <div>
+        <h2>用户管理</h2>
+        <p>查看本租户用户，按权限修改普通用户与租户管理员角色。</p>
+      </div>
+      <el-button type="primary" plain @click="loadUsers">刷新列表</el-button>
     </header>
 
-    <section class="table-wrap">
+    <section class="summary-grid">
+      <article class="summary-card">
+        <span>用户总数</span>
+        <strong>{{ visibleUsers.length }}</strong>
+      </article>
+      <article class="summary-card">
+        <span>租户管理员</span>
+        <strong>{{ countByRole(1) }}</strong>
+      </article>
+      <article class="summary-card">
+        <span>普通用户</span>
+        <strong>{{ countByRole(2) }}</strong>
+      </article>
+    </section>
+
+    <section class="table-card">
+      <header class="panel-head">
+        <h3>用户列表</h3>
+      </header>
+
       <el-table
         v-loading="loading"
         :data="visibleUsers"
@@ -18,7 +41,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="角色" width="150">
+        <el-table-column label="角色" width="170">
           <template #default="{ row }">
             <el-tag :type="getRoleTagType(getUserRole(row))" effect="light">
               {{ getRoleLabel(getUserRole(row)) }}
@@ -40,12 +63,12 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" min-width="260" fixed="right">
+        <el-table-column label="操作" min-width="280" fixed="right">
           <template #default="{ row }">
-            <div class="role-action">
+            <div v-if="canEditRole(row)" class="role-action">
               <el-select
                 class="role-select"
-                :disabled="isSelf(row) || roleSubmittingMap[getUserId(row)]"
+                :disabled="roleSubmittingMap[getUserId(row)]"
                 :model-value="getDraftRole(row)"
                 placeholder="选择角色"
                 size="small"
@@ -63,7 +86,7 @@
                 cancel-button-text="取消"
                 confirm-button-text="确认修改"
                 :title="getRoleConfirmTitle(row)"
-                width="240"
+                width="260"
                 @cancel="cancelRoleChange(row)"
                 @confirm="confirmRoleChange(row)"
               >
@@ -71,7 +94,7 @@
                   <el-button
                     link
                     type="primary"
-                    :disabled="isSelf(row) || !hasRoleChanged(row)"
+                    :disabled="!hasRoleChanged(row)"
                     :loading="Boolean(roleSubmittingMap[getUserId(row)])"
                   >
                     修改角色
@@ -79,6 +102,7 @@
                 </template>
               </el-popconfirm>
             </div>
+            <span v-else class="readonly-action">不可修改</span>
           </template>
         </el-table-column>
       </el-table>
@@ -119,9 +143,7 @@ const roleSubmittingMap = reactive({});
 
 const currentUserId = computed(() => authStore.userInfo?.userId ?? authStore.userInfo?.id);
 
-const visibleUsers = computed(() =>
-  userList.value.filter((user) => getUserRole(user) !== 0)
-);
+const visibleUsers = computed(() => userList.value);
 
 const normalizeList = (data) => {
   if (Array.isArray(data)) {
@@ -130,6 +152,9 @@ const normalizeList = (data) => {
 
   return data?.records || data?.list || data?.items || [];
 };
+
+const countByRole = (role) =>
+  visibleUsers.value.filter((user) => getUserRole(user) === role).length;
 
 const resetRoleDrafts = (list) => {
   Object.keys(roleDraftMap).forEach((key) => {
@@ -195,6 +220,8 @@ const isSelf = (row) => {
   return String(rowUserId) === String(currentUserId.value);
 };
 
+const canEditRole = (row) => !isSelf(row) && getUserRole(row) !== 0;
+
 const handleRoleSelect = (row, nextRole) => {
   const userId = getUserId(row);
 
@@ -244,59 +271,90 @@ onMounted(() => {
 
 <style scoped>
 .user-manage-view {
-  min-height: calc(100vh - var(--topbar-height));
+  min-height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 16px;
   background: var(--color-bg-secondary);
-  padding: 20px 24px;
+  padding: 18px;
 }
 
-.page-toolbar {
-  min-height: 64px;
+.page-header,
+.table-card,
+.summary-card {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(16, 24, 40, 0.04);
+}
+
+.page-header {
+  min-height: 76px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px 10px 0 0;
-  background: #ffffff;
+  gap: 18px;
   padding: 0 20px;
 }
 
-.page-toolbar h2 {
+.page-header h2,
+.panel-head h3 {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: 22px;
+  font-weight: 850;
 }
 
-.table-wrap {
-  min-height: 0;
-  flex: 1;
-  overflow: auto;
-  border: 1px solid var(--color-border);
-  border-top: 0;
-  border-radius: 0 0 10px 10px;
-  background: #ffffff;
-  padding: 0;
+.page-header p {
+  margin: 8px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
 }
 
-.table-wrap :deep(.el-table) {
-  --el-table-header-bg-color: #ffffff;
-  --el-table-row-hover-bg-color: var(--color-primary-soft);
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-card {
+  padding: 18px;
+}
+
+.summary-card span {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.summary-card strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--color-text-primary);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+.panel-head {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 18px;
+}
+
+.panel-head h3 {
+  font-size: 18px;
 }
 
 .entity-name {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
   color: var(--color-text-primary);
-  font-weight: 600;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  white-space: nowrap;
+  font-weight: 800;
 }
 
 .role-action {
@@ -306,26 +364,24 @@ onMounted(() => {
 }
 
 .role-select {
-  width: 132px;
-  flex: 0 0 132px;
+  width: 150px;
 }
 
-@media (max-width: 900px) {
-  .page-toolbar,
-  .table-wrap {
-    padding-left: 16px;
-    padding-right: 16px;
+.readonly-action {
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 860px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
   }
 
-  .user-manage-view {
-    padding: 12px;
-  }
-
-  .page-toolbar {
+  .page-header {
     align-items: flex-start;
     flex-direction: column;
-    padding-top: 16px;
-    padding-bottom: 16px;
+    padding: 16px 18px;
   }
 }
 </style>

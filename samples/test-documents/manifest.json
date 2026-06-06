@@ -1,0 +1,41 @@
+[
+  {
+    "title": "问渠企业智能知识库问答系统：架构与部署说明",
+    "docx": "01-wenqu-architecture-deployment-guide.docx",
+    "pdf": "01-wenqu-architecture-deployment-guide.pdf",
+    "suggested_questions": [
+      "问渠系统的向量库使用什么技术？",
+      "parser 服务监听哪个端口？",
+      "为什么每个租户要有独立的 Milvus Collection？"
+    ]
+  },
+  {
+    "title": "问渠用户与管理员操作手册",
+    "docx": "02-wenqu-user-admin-manual.docx",
+    "pdf": "02-wenqu-user-admin-manual.pdf",
+    "suggested_questions": [
+      "普通用户是否可以上传文档？",
+      "文档上传接口返回哪些字段？",
+      "问答接口的 done 事件会携带什么数据？"
+    ]
+  },
+  {
+    "title": "企业制度知识库样例：差旅、报销与休假",
+    "docx": "03-enterprise-policy-knowledge-base-sample.docx",
+    "pdf": "03-enterprise-policy-knowledge-base-sample.pdf",
+    "suggested_questions": [
+      "一线城市普通员工住宿报销上限是多少？",
+      "差旅结束后多久内要提交报销单？",
+      "申请年假需要提前几个工作日？"
+    ]
+  },
+  {
+    "title": "问渠知识库扫描件 OCR 测试通知",
+    "pdf": "04-scanned-ocr-notice.pdf",
+    "note": "图片型 PDF，用于触发扫描件 OCR 路径。",
+    "suggested_questions": [
+      "扫描件的建议分辨率是多少？",
+      "低于多少字符会判定为扫描版？"
+    ]
+  }
+]

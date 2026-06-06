@@ -1,8 +1,13 @@
 package com.kb.app.module.eval.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.kb.app.module.eval.entity.EvalBatchDO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 评估批次表 Mapper — 对应数据库 eval_batch 表。
@@ -24,4 +29,16 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface EvalBatchMapper extends BaseMapper<EvalBatchDO> {
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("""
+            SELECT *
+            FROM eval_batch
+            ORDER BY created_at DESC, id DESC
+            """)
+    List<EvalBatchDO> selectAllIgnoreTenant();
+
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("SELECT * FROM eval_batch WHERE id = #{id} LIMIT 1")
+    EvalBatchDO selectByIdIgnoreTenant(@Param("id") Long id);
 }
