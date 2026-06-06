@@ -87,27 +87,48 @@ class SmartChunker:
             因为表格是独立语义单元，不参与文本降级策略判断。
         """
         normalized_file_type = (file_type or "").strip().lower()
+        safe_text_blocks = [
+            block
+            for block in (text_blocks or [])
+            if isinstance(block, dict)
+        ]
+        safe_tables = [
+            table
+            for table in (tables or [])
+            if isinstance(table, dict)
+        ]
 
-        if self._has_heading_structure(text_blocks):
-            chunks = self._chunk_by_heading(text_blocks)
-        elif self._has_paragraph_structure(text_blocks, normalized_file_type):
-            chunks = self._chunk_by_paragraph(text_blocks)
+        if self._has_heading_structure(safe_text_blocks):
+            chunks = self._chunk_by_heading(safe_text_blocks)
+        elif self._has_paragraph_structure(safe_text_blocks, normalized_file_type):
+            chunks = self._chunk_by_paragraph(safe_text_blocks)
         else:
-            text = self._join_block_texts(text_blocks, separator="\n")
+            text = self._join_block_texts(safe_text_blocks, separator="\n")
             chunks = self._chunk_by_length(text)
 
-        for table in tables:
+        for table in safe_tables:
             chunks.append(self._table_to_chunk(table, len(chunks)))
 
         # 文本块过小可丢弃；表格整表一个 chunk，不因 min_chunk_chars 误删短表
-        chunks = [
+        non_empty_chunks = [
             chunk
             for chunk in chunks
+            if chunk.content and chunk.content.strip()
+        ]
+        filtered_chunks = [
+            chunk
+            for chunk in non_empty_chunks
             if chunk.content and (
                 len(chunk.content.strip()) >= self.min_chunk_chars
                 or chunk.chunk_type == "table"
             )
         ]
+        if filtered_chunks:
+            has_filtered_text = any(chunk.chunk_type != "table" for chunk in filtered_chunks)
+            has_original_text = any(chunk.chunk_type != "table" for chunk in non_empty_chunks)
+            chunks = filtered_chunks if has_filtered_text or not has_original_text else non_empty_chunks
+        else:
+            chunks = non_empty_chunks
 
         chunks.sort(key=lambda chunk: (
             chunk.page_no is None,
@@ -437,14 +458,37 @@ class SmartChunker:
             ChunkModel: 通过校验的 chunk 数据模型。
         """
         clean_content = (content or "").strip()
+        clean_heading_path = str(heading_path or "").strip() or None
+        safe_page_no = self._normalize_page_no(page_no)
+        safe_chunk_index = self._normalize_chunk_index(chunk_index)
+        clean_chunk_type = str(chunk_type or "length").strip() or "length"
+
         return ChunkModel(
             content=clean_content,
-            chunk_index=chunk_index,
-            heading_path=heading_path,
-            page_no=page_no,
+            chunk_index=safe_chunk_index,
+            heading_path=clean_heading_path,
+            page_no=safe_page_no,
             char_count=len(clean_content),
-            chunk_type=chunk_type,
+            chunk_type=clean_chunk_type,
         )
+
+    @staticmethod
+    def _normalize_chunk_index(chunk_index: int) -> int:
+        try:
+            safe_chunk_index = int(chunk_index)
+        except (TypeError, ValueError):
+            return 0
+        return max(0, safe_chunk_index)
+
+    @staticmethod
+    def _normalize_page_no(page_no: Optional[int]) -> Optional[int]:
+        if page_no is None:
+            return None
+        try:
+            safe_page_no = int(page_no)
+        except (TypeError, ValueError):
+            return None
+        return safe_page_no if safe_page_no >= 1 else None
 
     def _max_chars(self) -> int:
         """

@@ -1,5 +1,6 @@
 package com.kb.app.module.document.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -24,5 +25,6 @@ public class ExpireRequest {
      * 传 null 表示永不过期（清除之前设置的过期时间）。
      * 传具体 LocalDateTime 值表示到达该时间后文档过期。
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime expireAt;
 }

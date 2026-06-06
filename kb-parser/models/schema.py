@@ -50,6 +50,10 @@ class ChunkModel(BaseModel):
 class ParseResponse(BaseModel):
     """文档解析接口的响应体，包含所有 chunk 和解析元信息"""
 
+    success: bool = Field(
+        default=True,
+        description="解析是否成功；成功响应固定为 true"
+    )
     chunks: list[ChunkModel] = Field(
         ...,
         description="解析后的 chunk 列表，按 chunk_index 升序排列"

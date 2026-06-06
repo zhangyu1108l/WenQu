@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from chunker.smart_chunker import SmartChunker
 from models.schema import ParseResponse
 from parser.pdf_parser import OcrDependencyError, OcrExecutionError, PdfParser, get_ocr_status
-from parser.word_parser import WordParser
+from parser.word_parser import WordParseError, WordParser
 
 logger = logging.getLogger(__name__)
 
@@ -76,38 +76,74 @@ async def parse_document(
 ) -> ParseResponse:
     # 步骤 1：记录开始时间，用于返回给 Java 主服务的解析耗时。
     start_time = time.perf_counter()
+    filename = file.filename or "<unknown>"
+    raw_file_type = file_type or ""
+    normalized_file_type = raw_file_type.strip().lower()
+    file_bytes = b""
 
-    # 步骤 2：UploadFile 必须在异步请求上下文中读取。
-    file_bytes = await file.read()
-    if not file_bytes:
-        raise HTTPException(status_code=400, detail="文件内容为空")
+    try:
+        # 步骤 2：UploadFile 必须在异步请求上下文中读取。
+        file_bytes = await file.read()
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="文件内容为空")
 
-    # 步骤 3：规范化文件类型，并路由到匹配的解析器。  
-    normalized_file_type = file_type.strip().lower()
-    if normalized_file_type == "pdf":
-        parsed = PdfParser().parse(file_bytes)
-    elif normalized_file_type == "docx":
-        parsed = WordParser().parse(file_bytes)
-    else:
-        raise HTTPException(status_code=400, detail="只支持 pdf / docx")
+        logger.info(
+            "收到解析请求: filename=%s, fileType=%s, size=%d bytes",
+            filename,
+            normalized_file_type,
+            len(file_bytes),
+        )
 
-    # 步骤 4：将解析结果转换为可用于检索的 chunk。
-    chunks = SmartChunker().chunk(
-        parsed.get("text_blocks", []),
-        parsed.get("tables", []),
-        normalized_file_type,
-    )
+        # 步骤 3：规范化文件类型，并路由到匹配的解析器。
+        if normalized_file_type == "pdf":
+            parsed = PdfParser().parse(file_bytes)
+        elif normalized_file_type == "docx":
+            parsed = WordParser().parse(file_bytes)
+        else:
+            raise HTTPException(status_code=400, detail="只支持 pdf / docx")
 
-    # 步骤 5：计算毫秒级解析耗时。
-    parse_time_ms = int((time.perf_counter() - start_time) * 1000)
+        # 步骤 4：将解析结果转换为可用于检索的 chunk。
+        chunks = SmartChunker().chunk(
+            parsed.get("text_blocks", []),
+            parsed.get("tables", []),
+            normalized_file_type,
+        )
 
-    # 步骤 6：返回 Java 主服务期望的成功解析响应。
-    return ParseResponse(
-        chunks=chunks,
-        total_chunks=len(chunks),
-        file_type=normalized_file_type,
-        parse_time_ms=parse_time_ms,
-    )
+        # 步骤 5：计算毫秒级解析耗时。
+        parse_time_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.info(
+            "解析请求完成: filename=%s, fileType=%s, chunks=%d, parseTimeMs=%d",
+            filename,
+            normalized_file_type,
+            len(chunks),
+            parse_time_ms,
+        )
+
+        # 步骤 6：返回 Java 主服务期望的成功解析响应。
+        return ParseResponse(
+            chunks=chunks,
+            total_chunks=len(chunks),
+            file_type=normalized_file_type,
+            parse_time_ms=parse_time_ms,
+        )
+    except HTTPException:
+        raise
+    except WordParseError as exc:
+        logger.exception(
+            "Word 文档解析失败: filename=%s, fileType=%s, size=%d bytes",
+            filename,
+            normalized_file_type or raw_file_type,
+            len(file_bytes),
+        )
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception(
+            "文档解析失败: filename=%s, fileType=%s, size=%d bytes",
+            filename,
+            normalized_file_type or raw_file_type,
+            len(file_bytes),
+        )
+        raise
 
 
 if __name__ == "__main__":
