@@ -1,0 +1,121 @@
+# ============================================================
+# WenQu kb-app Docker profile config
+# ============================================================
+# application-dev.yml is for local development and usually uses localhost.
+# application-docker.yml is for Docker Compose and uses service names such as
+# mysql, redis, milvus, minio, parser, and ragas-svc.
+#
+# docker-compose.yml sets SPRING_PROFILES_ACTIVE=docker.
+# Spring Boot then loads application-docker.yml and overrides application.yml.
+# ============================================================
+
+server:
+  # Docker difference from dev: kb-app listens on internal port 8081.
+  port: 8081
+
+spring:
+  # Docker difference from dev: use mysql service name. In a container,
+  # localhost would point to the app container itself.
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:kb_system}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:kb}
+    password: ${MYSQL_PASSWORD:}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+
+  # Docker difference from dev: use redis service name instead of localhost.
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          min-idle: 5
+          max-idle: 10
+          max-active: 20
+
+  # Docker difference from dev: API keys still come from environment variables.
+  # No image rebuild is needed after changing them; restart containers instead.
+  ai:
+    openai:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.3
+    deepseek:
+      chat:
+        model: deepseek-chat
+        temperature: 0.3
+        max-tokens: 2048
+
+# Docker difference from dev: Zhipu API key comes from env; model and dimension
+# stay fixed by architecture as embedding-3 and 2048.
+zhipu:
+  embedding:
+    base-url: ${ZHIPU_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+    api-key: ${ZHIPU_API_KEY:}
+    model: embedding-3
+    dimensions: 2048
+
+# Docker difference from dev: use application MinIO service name minio.
+# This is app document storage, not Milvus internal milvus-minio.
+minio:
+  endpoint: http://minio:9000
+  access-key: ${MINIO_ROOT_USER:minioadmin}
+  secret-key: ${MINIO_ROOT_PASSWORD:}
+  presigned-expire-minutes: 15
+
+# Docker difference from dev: use Milvus service name milvus.
+milvus:
+  host: milvus
+  port: 19530
+
+# Docker difference from dev: JWT secret comes from env and must match gateway.
+# JwtUtil currently reads token TTL values as milliseconds.
+jwt:
+  secret: ${JWT_SECRET:}
+  access-token-expire: 3600000
+  refresh-token-expire: 604800000
+
+async:
+  thread-pool:
+    core-size: 4
+    max-size: 16
+    queue-capacity: 100
+    thread-name-prefix: kb-async-
+
+# Docker difference from dev: use parser service name instead of localhost.
+parser:
+  base-url: http://parser:8090
+
+# Docker difference from dev: use ragas-svc service name instead of localhost.
+ragas:
+  base-url: http://ragas-svc:8091
+
+# Docker difference from dev: Ragas callback must use Docker internal app:8081.
+sidecar:
+  eval-callback-url: http://app:8081/internal/eval/callback
+
+# Same as application.yml: expose only health for Docker healthchecks.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+# Docker keeps INFO logs; dev profile enables DEBUG separately.
+logging:
+  level:
+    root: INFO
+    com.kb: INFO

@@ -1,0 +1,336 @@
+# ============================================================
+# WenQu Docker Compose - full 12-container stack
+#
+# Dependency graph:
+#   mysql / redis / minio / milvus-etcd / milvus-minio
+#     (base layer, start in parallel)
+#       |
+#       +--> milvus (depends on milvus-etcd + milvus-minio)
+#       |
+#   parser (no dependency)
+#       |
+#       v
+#   app (depends on mysql + redis + milvus + minio + parser)
+#       |
+#       +--> ragas-svc (depends on app)
+#       |
+#       +--> gateway (depends on app + redis)
+#                |
+#   frontend ----+--> nginx (depends on gateway + frontend)
+#
+# depends_on condition notes:
+#   service_healthy waits until the dependency healthcheck passes.
+#   service_started only waits until the dependency container process starts.
+# ============================================================
+
+services:
+  # MySQL stores tenants, users, documents, conversations, tasks, and eval data.
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    # Healthcheck: mysqladmin ping succeeds only after MySQL accepts local root connections.
+    # retries is 10 because the first MySQL initialization and schema import can be slow.
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  # Redis stores JWT blacklist entries and the recent conversation sliding window.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command:
+      - sh
+      - -c
+      - |
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes
+        else
+          redis-server --appendonly yes
+        fi
+    volumes:
+      - redis-data:/data
+    # Healthcheck: redis-cli ping is healthy when Redis returns PONG.
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -n \"$${REDIS_PASSWORD}\" ]; then redis-cli -a \"$${REDIS_PASSWORD}\" ping; else redis-cli ping; fi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  # MinIO stores uploaded application documents in tenant-{tenantId} buckets.
+  # This application MinIO is independent from milvus-minio below.
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9001:9001" # Expose the console for development bucket inspection.
+    # Healthcheck: /minio/health/live returns HTTP 200 when the MinIO server is live.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  # Milvus etcd stores Milvus standalone metadata and is used only inside the Docker network.
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    restart: unless-stopped
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: >
+      etcd
+      --advertise-client-urls=http://127.0.0.1:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - milvus-etcd-data:/etcd
+    networks:
+      - kb-net
+
+  # Milvus internal MinIO stores Milvus object data and is fully independent from the application minio service.
+  # It uses fixed minioadmin/minioadmin credentials, matching the Milvus official standalone example, and is not exposed publicly.
+  milvus-minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    restart: unless-stopped
+    command: minio server /minio_data
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - milvus-minio-data:/minio_data
+    # Healthcheck: /minio/health/live returns HTTP 200 when Milvus internal object storage is live.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  # Milvus stores and searches tenant-isolated document vectors.
+  milvus:
+    image: milvusdb/milvus:v2.4.5
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      # service_started is enough for etcd here because Milvus performs its own connection retry during startup.
+      milvus-etcd:
+        condition: service_started
+      # service_healthy waits for the internal object store readiness probe to pass.
+      milvus-minio:
+        condition: service_healthy
+    # Healthcheck: /healthz returns HTTP 200 after Milvus standalone is ready.
+    # retries is 10 because Milvus startup is usually slower, often around 30-60 seconds.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9091/healthz"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - kb-net
+
+  # Parser sidecar parses PDF/DOCX files and returns smart chunks for ingestion.
+  parser:
+    build:
+      context: ./kb-parser
+    restart: unless-stopped
+    # Healthcheck: /health returns HTTP 200 when FastAPI and parser dependencies are ready.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  # Java app hosts auth, document, chat, task, admin, eval, and RAG business APIs.
+  app:
+    build:
+      context: ./kb-system
+      dockerfile: kb-app/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: ${REDIS_HOST}
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT}
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_AI_OPENAI_BASE_URL: ${DEEPSEEK_BASE_URL}
+      SPRING_AI_OPENAI_API_KEY: ${DEEPSEEK_API_KEY}
+      SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL: deepseek-chat
+      SPRING_AI_OPENAI_CHAT_OPTIONS_TEMPERATURE: 0.3
+      ZHIPU_EMBEDDING_BASE_URL: ${ZHIPU_BASE_URL}
+      ZHIPU_EMBEDDING_API_KEY: ${ZHIPU_API_KEY}
+      ZHIPU_EMBEDDING_MODEL: embedding-3
+      ZHIPU_EMBEDDING_DIMENSIONS: 2048
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MILVUS_HOST: ${MILVUS_HOST}
+      MILVUS_PORT: ${MILVUS_PORT}
+      PARSER_BASE_URL: ${PARSER_BASE_URL}
+      RAGAS_BASE_URL: ${RAGAS_BASE_URL}
+      SIDECAR_EVAL_CALLBACK_URL: ${EVAL_CALLBACK_URL}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      # service_healthy requires each middleware/sidecar healthcheck to pass before app starts.
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      parser:
+        condition: service_healthy
+    # Healthcheck: /actuator/health returns HTTP 200 when Spring Boot is ready.
+    # start_period gives the Spring container warm-up time; failures during this period do not count toward retries.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - kb-net
+
+  # Ragas sidecar runs evaluation batches and calls back into the Java app.
+  ragas-svc:
+    build:
+      context: ./kb-ragas
+    restart: unless-stopped
+    environment:
+      JAVA_APP_BASE_URL: ${JAVA_APP_BASE_URL}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      ZHIPU_API_KEY: ${ZHIPU_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL}
+      ZHIPU_BASE_URL: ${ZHIPU_BASE_URL}
+    depends_on:
+      # service_healthy ensures callbacks are not attempted before the Java app is ready.
+      app:
+        condition: service_healthy
+    # Healthcheck: /health returns HTTP 200 when the FastAPI Ragas service is ready.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8091/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  # Gateway validates JWTs, checks Redis blacklist state, injects tenant headers, and routes API traffic.
+  gateway:
+    build:
+      context: ./kb-system
+      dockerfile: kb-gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATA_REDIS_HOST: ${REDIS_HOST}
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT}
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      GATEWAY_APP_SERVICE_URL: ${APP_SERVICE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      # service_healthy waits for the API backend and Redis blacklist store to be usable.
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Healthcheck: /actuator/health returns HTTP 200 when Spring Cloud Gateway is ready.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+    networks:
+      - kb-net
+
+  # Frontend serves the built Vue 3 SPA from an internal nginx on port 3000.
+  frontend:
+    build:
+      context: ./kb-frontend
+    restart: unless-stopped
+    # Healthcheck: / returns HTTP 200 when the static frontend nginx is serving index.html.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  # Public nginx is the only external entry point and reverse-proxies API/SSE/frontend traffic.
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      # service_healthy waits until Gateway can answer readiness checks.
+      gateway:
+        condition: service_healthy
+      # service_started only requires the frontend container process to be running.
+      frontend:
+        condition: service_started
+    # Healthcheck: / returns HTTP 200 through the public reverse proxy.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+# All services join kb-net and communicate through Docker service names.
+networks:
+  kb-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  minio-data:
+  milvus-etcd-data:
+  milvus-minio-data:
+  milvus-data:

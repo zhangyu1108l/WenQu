@@ -1,7 +1,47 @@
+# Java / Maven
+target/
 **/target/
-.idea
-*.iml
 *.class
+*.iml
 *Test.java
+
+# Node / frontend builds
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+kb-frontend/dist/
+
+# Python cache and local env
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# IDE and local assistant workspace
+.idea/
+.qoder/
+.workbuddy/
+
+# Logs and runtime files
+*.log
+*.err.log
+
+# Local OS files
+.DS_Store
+Thumbs.db
+
+# Generated reports and previews
+api-test-report-*.md
+ui-previews/
+
+# Local test secrets and large OCR model data
 **/test/.env
 kb-parser/tessdata/*.traineddata
+
+# .env contains real passwords, JWT secrets, and API keys. Never commit it.
+# .env.example is the commit-safe template and must contain placeholders only.
+.env
