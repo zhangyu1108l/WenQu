@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 /**
  * Embedding 写入 Service 实现。
  * <p>
- * 本类只负责 Step 5-C：批量生成向量并写入 Milvus / doc_chunk，
+ * 本类只负责步骤 5-C：批量生成向量并写入 Milvus / doc_chunk，
  * 不包含检索、重排、RAG 问答或 Controller 逻辑。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service
@@ -263,6 +263,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
         // 1. 获取 Collection 名称。
         String collectionName = collectionHelper.getCollectionName(tenantId);
+        if (!collectionHelper.collectionExists(tenantId)) {
+            log.info("租户 Milvus 集合不存在，跳过向量删除：tenantId={}, collection={}, count={}",
+                    tenantId, collectionName, milvusIds.size());
+            return;
+        }
 
         collectionHelper.ensureCollectionLoaded(tenantId);
 

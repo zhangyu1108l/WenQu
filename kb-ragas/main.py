@@ -21,10 +21,10 @@ logger = get_logger(__name__)
 
 
 class SingleEvaluateRequest(BaseModel):
-    question: str = Field(..., description="Evaluation question")
-    ground_truth: str = Field(..., description="Reference answer")
-    model_answer: str = Field(..., description="RAG model answer")
-    contexts: List[str] = Field(..., description="Retrieved contexts")
+    question: str = Field(..., description="评估问题")
+    ground_truth: str = Field(..., description="标准答案")
+    model_answer: str = Field(..., description="RAG 模型回答")
+    contexts: List[str] = Field(..., description="检索上下文")
 
 
 def _require_env(name: str) -> str:
@@ -53,35 +53,30 @@ def _validate_evaluate_request(request: EvaluateRequest) -> None:
         raise HTTPException(status_code=400, detail="callback_url 不能为空")
 
 
-# FastAPI recommends lifespan instead of the older @app.on_event hooks because
-# startup and shutdown wiring stays in one explicit lifecycle block.
+# FastAPI 推荐使用 lifespan 替代旧的 @app.on_event 钩子，
+# 这样启动和关闭逻辑会集中在一个明确的生命周期块中。
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     rag_client: RagClient | None = None
 
     try:
-        # Step 1: validate API keys before accepting traffic so configuration
-        # mistakes fail fast and no evaluation task is accepted in a broken state.
+        # 步骤 1：接收请求前先校验 API Key，让配置错误尽早暴露，
+        # 避免在服务异常状态下接收评估任务。
         _validate_ragas_api_keys()
         evaluator = RagasEvaluator()
 
-        # Step 2: initialize the Java RAG client after the evaluator because it
-        # depends on service routing, while evaluator config is the first hard gate.
-        java_base_url = (
-            os.getenv("JAVA_BASE_URL")
-            or os.getenv("JAVA_APP_BASE_URL")
-            or "http://localhost:8082"
-        ).strip()
+        # 步骤 2：在评估器之后初始化 Java RAG 客户端；
+        # 评估器配置是第一道硬校验，RAG 客户端则依赖服务路由。
+        java_base_url = (os.getenv("JAVA_APP_BASE_URL") or "").strip()
         if not java_base_url:
-            raise RuntimeError("JAVA_BASE_URL is empty")
+            raise RuntimeError("JAVA_APP_BASE_URL is required")
         rag_client = RagClient(java_base_url=java_base_url)
 
-        # Step 3: build the executor last because it composes the evaluator and
-        # RAG client created above.
+        # 步骤 3：最后创建执行器，因为它组合了上面创建的评估器和 RAG 客户端。
         task_executor = TaskExecutor(rag_client=rag_client, evaluator=evaluator)
 
-        # Step 4: attach singletons to app.state so route handlers reuse clients
-        # and do not recreate expensive Ragas or httpx resources per request.
+        # 步骤 4：把单例挂到 app.state，路由处理器可以复用客户端，
+        # 避免每次请求都重新创建昂贵的 Ragas 或 httpx 资源。
         app.state.evaluator = evaluator
         app.state.rag_client = rag_client
         app.state.task_executor = task_executor
@@ -106,8 +101,8 @@ app = FastAPI(title="kb-ragas", lifespan=lifespan)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(_: Request, exc: Exception) -> JSONResponse:
-    # A fallback handler keeps unexpected 500 errors JSON-shaped; otherwise
-    # FastAPI may return an HTML error page that the Java caller cannot parse.
+    # 兜底处理器保证异常 500 也返回 JSON；
+    # 否则 FastAPI 可能返回 Java 调用方无法解析的 HTML 错误页。
     logger.exception("Unhandled kb-ragas error")
     return JSONResponse(
         status_code=500,
@@ -121,8 +116,8 @@ async def global_exception_handler(_: Request, exc: Exception) -> JSONResponse:
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    # Java checks this endpoint during startup to confirm the sidecar is ready;
-    # docker-compose healthcheck can use the same lightweight readiness probe.
+    # Java 启动时会检查该接口确认侧车已就绪；
+    # docker-compose healthcheck 也可以复用这个轻量就绪探针。
     return HealthResponse(status="ok", service="kb-ragas")
 
 
@@ -143,18 +138,16 @@ def _track_background_task(task: asyncio.Task, batch_id: int) -> None:
 
 @app.post("/evaluate", response_model=EvaluateResponse)
 async def evaluate(request: EvaluateRequest) -> EvaluateResponse:
-    # Evaluation can take several minutes, so the API returns immediately and
-    # Java receives the final result through callback_url.
+    # 评估可能持续数分钟，因此接口立即返回，
+    # Java 通过 callback_url 接收最终结果。
     _validate_evaluate_request(request)
 
     task_executor: TaskExecutor = app.state.task_executor
 
-    # create_task schedules the coroutine on FastAPI's running asyncio event loop
-    # and returns immediately; the evaluation continues in the background after
-    # this request handler sends its response.
-    # Unlike threading, create_task does not create an independent OS thread.
-    # FastAPI is asyncio-based, so coroutine scheduling is the right fit here;
-    # threads are mainly useful for CPU-bound or blocking work.
+    # create_task 会把协程调度到 FastAPI 正在运行的 asyncio 事件循环并立即返回；
+    # 当前请求处理器返回响应后，评估会继续在后台执行。
+    # 与 threading 不同，create_task 不会创建独立的操作系统线程。
+    # FastAPI 基于 asyncio，协程调度更适合这里；线程主要适用于 CPU 密集或阻塞型工作。
     task = asyncio.create_task(
         task_executor.execute(request),
         name=f"ragas-evaluate-{request.batch_id}",
@@ -170,10 +163,9 @@ async def evaluate(request: EvaluateRequest) -> EvaluateResponse:
 
 @app.post("/evaluate/single")
 async def evaluate_single(request: SingleEvaluateRequest) -> dict:
-    # Development-only debug endpoint for checking whether Ragas configuration
-    # works. It is not part of the production batch callback flow.
-    # This request waits for the metric result before returning; one case can
-    # take about 30-60 seconds, so use it with client timeouts in mind.
+    # 仅开发调试使用的接口，用于检查 Ragas 配置是否可用；
+    # 它不属于生产批次回调流程。
+    # 该请求会等待指标结果后再返回；单个用例可能需要 30-60 秒，调用时需注意客户端超时设置。
     evaluator: RagasEvaluator = app.state.evaluator
     return await evaluator.evaluate_single(
         question=request.question,
@@ -185,6 +177,5 @@ async def evaluate_single(request: SingleEvaluateRequest) -> dict:
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8091))
-    # Production containers do not need hot reload; in Docker it adds noise and
-    # extra processes without value.
+    # 生产容器不需要热重载；在 Docker 中它只会增加额外日志和进程。
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

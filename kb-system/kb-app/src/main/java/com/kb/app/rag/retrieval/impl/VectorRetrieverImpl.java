@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 /**
  * Milvus 向量检索 Service 实现。
  * <p>
- * 本类只负责 Step 5-D：向量检索、简单重排、组合查询入口；
- * Prompt 构建和 LLM 流式调用属于 Step 6。
+ * 本类只负责步骤 5-D：向量检索、简单重排、组合查询入口；
+ * Prompt 构建和 LLM 流式调用属于步骤 6。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service
@@ -93,11 +93,24 @@ public class VectorRetrieverImpl implements VectorRetriever {
         float[] normalizedVector = embeddingClient.normalizeVector(queryVector);
         List<List<Float>> queryVectorList = List.of(toFloatList(normalizedVector));
         String collectionName = collectionHelper.getCollectionName(tenantId);
+        if (!collectionHelper.collectionExists(tenantId)) {
+            log.info("租户 Milvus 集合不存在，跳过向量检索：tenantId={}, collection={}", tenantId, collectionName);
+            return List.of();
+        }
         collectionHelper.ensureCollectionLoaded(tenantId);
 
         SearchParam searchParam = buildSearchParam(collectionName, queryVectorList, topK, OUT_FIELDS);
-        R<SearchResults> response = milvusServiceClient.search(searchParam);
-        assertSuccess(response, "在集合 " + collectionName + " 中检索向量");
+        R<SearchResults> response;
+        try {
+            response = milvusServiceClient.search(searchParam);
+            assertSuccess(response, "在集合 " + collectionName + " 中检索向量");
+        } catch (RuntimeException ex) {
+            if (isCollectionNotFound(ex)) {
+                log.info("租户 Milvus 集合不存在，跳过向量检索：tenantId={}, collection={}", tenantId, collectionName);
+                return List.of();
+            }
+            throw ex;
+        }
 
         SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
         List<SearchResultsWrapper.IDScore> idScores = wrapper.getIDScore(0);
@@ -156,7 +169,7 @@ public class VectorRetrieverImpl implements VectorRetriever {
      * 1. 调用 embeddingClient.embedSingle(queryText)，把用户问题转成 embedding-3 查询向量；
      * 2. 调用 search(vector, tenantId, 10)，从租户独立 Collection 中召回 Top-10 候选；
      * 3. 调用 rerank(candidates, queryText, 5)，用关键词辅助信号重排并保留 Top-5；
-     * 4. 返回最终 chunk 列表，供 Step 6 构建 Prompt 和来源引用。
+     * 4. 返回最终 chunk 列表，供步骤 6 构建 Prompt 和来源引用。
      * <p>
      * 先取 Top-10 再重排到 Top-5 的原因：向量检索先召回更多候选，降低漏召回风险；
      * 随后重排序提升精度，让进入 Prompt 的上下文更集中。
@@ -168,6 +181,10 @@ public class VectorRetrieverImpl implements VectorRetriever {
     @Override
     public List<ChunkResult> searchAndRerank(String queryText, Long tenantId) {
         if (!StringUtils.hasText(queryText)) {
+            return List.of();
+        }
+        if (!collectionHelper.collectionExists(tenantId)) {
+            log.info("租户 Milvus 集合不存在，跳过 RAG 检索：tenantId={}", tenantId);
             return List.of();
         }
 
@@ -379,5 +396,17 @@ public class VectorRetrieverImpl implements VectorRetriever {
         if (response.getStatus() != R.Status.Success.getCode()) {
             throw new IllegalStateException("Milvus 操作失败：操作=" + operation + "，原因=" + response.getMessage());
         }
+    }
+
+    private boolean isCollectionNotFound(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains("collection not found")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }

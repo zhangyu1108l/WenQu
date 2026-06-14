@@ -25,14 +25,14 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * 滑动窗口机制示意：
  * <pre>
- * Redis List: [Q1, A1, Q2, A2, Q3, A3, Q4, A4, Q5, A5]
+ * Redis 列表：[Q1, A1, Q2, A2, Q3, A3, Q4, A4, Q5, A5]
  *                                                  ↑新消息 RPUSH 追加
  * LTRIM 保留最新10条 → 窗口自动滑动
  * </pre>
  * <p>
  * Redis 仅保存轻量级 {@link ChatMessage} JSON 字符串，完整消息与 source_chunks 仍以 MySQL message 表为准。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service

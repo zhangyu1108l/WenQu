@@ -2,9 +2,7 @@
   <main class="login-page">
     <section class="login-hero">
       <div class="hero-brand">
-        <span class="brand-mark" aria-hidden="true">
-          <span />
-        </span>
+        <img class="brand-mark" :src="wenquLogoIcon" alt="" aria-hidden="true" />
         <strong>WenQu</strong>
       </div>
       <h1>企业级 RAG 知识库系统</h1>
@@ -20,7 +18,6 @@
       <header class="card-header">
         <div>
           <h2>{{ authMode === 'login' ? '账号登录' : '注册账号' }}</h2>
-          <p>{{ authMode === 'login' ? '登录后进入企业知识库工作台' : '创建账号后自动进入工作台' }}</p>
         </div>
         <button class="text-button" type="button" @click="toggleAuthMode">
           {{ authMode === 'login' ? '注册账号' : '返回登录' }}
@@ -52,6 +49,7 @@
         :model="loginForm"
         :rules="authRules"
         label-position="top"
+        :validate-on-rule-change="false"
         @keyup.enter="handleSubmit"
       >
         <el-form-item label="租户代码" prop="tenantCode">
@@ -105,8 +103,7 @@
         </el-form-item>
 
         <div class="form-meta">
-          <el-checkbox disabled>记住租户</el-checkbox>
-          <span>JWT 登录态由后端校验</span>
+          <el-checkbox v-model="rememberMe">记住用户</el-checkbox>
         </div>
 
         <el-button
@@ -131,11 +128,12 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Lock, OfficeBuilding, User } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
+import wenquLogoIcon from '../assets/wenqu-logo-b-icon-white.png';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -143,13 +141,22 @@ const authStore = useAuthStore();
 const loginFormRef = ref(null);
 const loading = ref(false);
 const authMode = ref('login');
-
+const rememberMe = ref(false);
 const loginForm = reactive({
   tenantCode: '',
   username: '',
   password: '',
   confirmPassword: ''
 });
+
+// 初始化：如果 localStorage 记录了租户代码，自动填充并勾选
+if (typeof localStorage !== 'undefined') {
+  const savedTenantCode = localStorage.getItem('wenqu_remembered_tenant');
+  if (savedTenantCode) {
+    loginForm.tenantCode = savedTenantCode;
+    rememberMe.value = true;
+  }
+}
 
 const validateConfirmPassword = (_rule, value, callback) => {
   if (authMode.value !== 'register') {
@@ -171,18 +178,18 @@ const validateConfirmPassword = (_rule, value, callback) => {
 };
 
 const authRules = computed(() => ({
-  tenantCode: [{ required: true, message: '请输入租户代码', trigger: 'blur' }],
+  tenantCode: [{ required: true, message: '请输入租户代码' }],
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 2, max: 20, message: '用户名长度为 2-20 个字符', trigger: 'blur' }
+    { required: true, message: '请输入用户名' },
+    { min: 2, max: 20, message: '用户名长度为 2-20 个字符' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 20, message: '密码长度为 6-20 个字符', trigger: 'blur' }
+    { required: true, message: '请输入密码' },
+    { min: 6, max: 20, message: '密码长度为 6-20 个字符' }
   ],
   confirmPassword:
     authMode.value === 'register'
-      ? [{ validator: validateConfirmPassword, trigger: ['blur', 'change'] }]
+      ? [{ validator: validateConfirmPassword }]
       : []
 }));
 
@@ -196,9 +203,7 @@ const setAuthMode = async (mode) => {
   }
 
   authMode.value = mode;
-  loginForm.confirmPassword = '';
-  await nextTick();
-  loginFormRef.value?.clearValidate();
+  loginFormRef.value?.resetFields();
 };
 
 const toggleAuthMode = () => {
@@ -232,9 +237,18 @@ const handleSubmit = async () => {
       ElMessage.success('注册成功');
     }
 
+    // 根据复选框状态持久化或清除租户代码
+    if (typeof localStorage !== 'undefined') {
+      if (rememberMe.value) {
+        localStorage.setItem('wenqu_remembered_tenant', loginForm.tenantCode);
+      } else {
+        localStorage.removeItem('wenqu_remembered_tenant');
+      }
+    }
+
     router.push('/chat');
   } catch {
-    // request interceptor has already shown the server-side error message.
+    // 请求拦截器已经展示了服务端错误信息。
   } finally {
     loading.value = false;
   }
@@ -267,42 +281,13 @@ const handleSubmit = async () => {
 }
 
 .brand-mark {
-  position: relative;
   width: 44px;
   height: 44px;
-  display: grid;
-  place-items: center;
+  display: block;
+  flex: 0 0 auto;
   border-radius: 12px;
-  background: linear-gradient(135deg, #1769ff, #55d4ff);
-  box-shadow: 0 16px 32px rgba(23, 105, 255, 0.25);
-}
-
-.brand-mark::before,
-.brand-mark::after,
-.brand-mark span {
-  position: absolute;
-  width: 15px;
-  height: 15px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.82);
-  content: '';
-  transform: rotate(45deg);
-}
-
-.brand-mark::before {
-  left: 10px;
-  top: 10px;
-}
-
-.brand-mark::after {
-  right: 10px;
-  bottom: 10px;
-}
-
-.brand-mark span {
-  right: 10px;
-  top: 10px;
-  background: rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  object-fit: cover;
 }
 
 .hero-brand strong {

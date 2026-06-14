@@ -2,32 +2,30 @@ import httpx
 
 
 class RagClientException(Exception):
-    """Custom exception for separating RAG invocation failures from other errors."""
+    """用于区分 RAG 调用失败和其他错误的自定义异常。"""
 
 
 class RagClient:
-    """Client for reusing the Java RAG flow during Ragas evaluation.
+    """Ragas 评估期间复用 Java RAG 流程的客户端。
 
-    Python does not call Milvus or DeepSeek directly here because the Java service
-    already owns the complete RAG implementation. Reusing it avoids maintaining
-    two divergent retrieval and generation pipelines.
+    这里 Python 不直接调用 Milvus 或 DeepSeek，因为 Java 服务已经拥有完整的 RAG 实现。
+    复用它可以避免维护两套彼此分叉的检索与生成流程。
     """
 
     def __init__(self, java_base_url: str):
         self.java_base_url = java_base_url.rstrip("/")
         timeout = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
-        # Use httpx.AsyncClient instead of requests because FastAPI is async;
-        # a synchronous requests call would block the event loop.
-        # The 120s read timeout gives enough room for embedding, vector search,
-        # and LLM generation, which can be slower than ordinary HTTP calls.
+        # 使用 httpx.AsyncClient 而不是 requests，因为 FastAPI 是异步的；
+        # 同步 requests 调用会阻塞事件循环。
+        # 120 秒读取超时为 embedding、向量检索和 LLM 生成留出足够时间，
+        # 这些步骤可能比普通 HTTP 调用更慢。
         self.session = httpx.AsyncClient(timeout=timeout, trust_env=False)
 
     async def get_rag_answer(self, question: str, tenant_id: int) -> dict:
-        """Call the Java internal RAG endpoint and return answer plus contexts."""
+        """调用 Java 内部 RAG 接口，并返回回答与上下文。"""
 
-        # /internal/rag/answer is an evaluation-only internal endpoint. It does
-        # not pass through Gateway authentication and should only be called on
-        # the private Docker network.
+        # /internal/rag/answer 是仅供评估使用的内部接口。
+        # 它不经过 Gateway 鉴权，只应在私有 Docker 网络中调用。
         url = f"{self.java_base_url}/internal/rag/answer"
         try:
             response = await self.session.post(
@@ -45,9 +43,9 @@ class RagClient:
         payload = response.json()
         data = payload.get("data", payload) if isinstance(payload, dict) else {}
         model_answer = data.get("modelAnswer") or data.get("model_answer") or ""
-        # contexts is the list of original retrieved chunk texts. Ragas needs it
-        # to compute context_recall and context_precision; without this input,
-        # those metrics cannot be calculated.
+        # contexts 是检索到的原始 chunk 文本列表。
+        # Ragas 需要它计算 context_recall 和 context_precision；
+        # 没有该输入就无法计算这些指标。
         contexts = data.get("contexts") or []
         if not isinstance(contexts, list):
             contexts = []
@@ -58,5 +56,5 @@ class RagClient:
         }
 
     async def close(self) -> None:
-        # Call this from FastAPI lifespan shutdown to close the HTTP connection pool.
+        # 在 FastAPI lifespan 关闭阶段调用，用于关闭 HTTP 连接池。
         await self.session.aclose()

@@ -81,7 +81,7 @@ export function useChat() {
               retryClient.connect();
               return;
             } catch {
-              // Fall through to the normal SSE failure path.
+              // 继续走常规 SSE 失败处理流程。
             }
           }
 

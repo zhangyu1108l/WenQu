@@ -16,7 +16,7 @@ import java.util.List;
  * 继承 MyBatis-Plus {@link BaseMapper}，自动获得 async_task 单表 CRUD 能力；
  * 额外查询方法用于业务任务定位、服务重启恢复检查和管理员任务历史分页。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface AsyncTaskMapper extends BaseMapper<AsyncTaskDO> {
@@ -70,7 +70,7 @@ public interface AsyncTaskMapper extends BaseMapper<AsyncTaskDO> {
     List<AsyncTaskDO> selectRunningTasks(@Param("taskType") String taskType);
 
     /**
-     * Query stale RUNNING tasks that have not been updated for longer than the cutoff.
+     * 查询超过截止时间仍未更新的 RUNNING 任务。
      */
     @InterceptorIgnore(tenantLine = "true")
     @Select("""

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
 /**
- * MyBatis-Plus automatic timestamp fill handler.
+ * MyBatis-Plus 自动时间戳填充处理器。
  */
 @Component
 public class MybatisMetaObjectHandler implements MetaObjectHandler {

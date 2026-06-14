@@ -1,52 +1,5 @@
 <template>
   <div class="chat-view">
-    <aside class="conversation-panel">
-      <header class="conversation-header">
-        <button class="new-conversation-button" type="button" @click="handleCreateConversation">
-          <el-icon>
-            <Plus />
-          </el-icon>
-          <span>新建对话</span>
-        </button>
-      </header>
-
-      <div class="conversation-list">
-        <template v-for="group in conversationGroups" :key="group.label">
-          <p v-if="group.items.length" class="conversation-group-label">{{ group.label }}</p>
-          <button
-            v-for="conversation in group.items"
-            :key="getConversationId(conversation)"
-            class="conversation-item"
-            :class="{ active: getConversationId(conversation) === chatStore.currentConvId }"
-            type="button"
-            @click="handleSelectConversation(getConversationId(conversation))"
-          >
-            <span class="conversation-title">{{ getConversationTitle(conversation) }}</span>
-            <time>{{ getConversationTime(conversation) }}</time>
-            <el-popconfirm
-              cancel-button-text="取消"
-              confirm-button-text="删除"
-              title="确认删除该对话？"
-              width="180"
-              @confirm="handleDeleteConversation(getConversationId(conversation))"
-            >
-              <template #reference>
-                <span class="delete-trigger" title="删除" @click.stop>
-                  <el-icon>
-                    <Delete />
-                  </el-icon>
-                </span>
-              </template>
-            </el-popconfirm>
-          </button>
-        </template>
-
-        <div v-if="!chatStore.conversations.length" class="conversation-empty">
-          暂无对话
-        </div>
-      </div>
-    </aside>
-
     <section class="chat-main">
       <template v-if="hasActiveConversation">
         <header class="chat-header">
@@ -55,7 +8,7 @@
             <span>SSE 流式回答 · 最近 5 轮上下文 · 生成完成后返回来源片段</span>
           </div>
 
-          <span class="source-count">引用 {{ latestSourceCount }} 个来源</span>
+          <span class="source-count">来源 {{ latestSourceCount }}</span>
         </header>
 
         <div ref="messageListRef" class="message-list" data-chat-message-list>
@@ -69,7 +22,7 @@
           <div v-if="!chatStore.messages.length" class="empty-thread">
             <div class="empty-thread__mark">
               <el-icon>
-                <ChatDotRound />
+                <MagicStick />
               </el-icon>
             </div>
             <h3>问一个和企业知识库有关的问题</h3>
@@ -78,23 +31,21 @@
         </div>
 
         <footer class="composer">
+          <button class="composer-tool" type="button" title="文档管理" @click="$router.push('/docs')">
+            <el-icon>
+              <Files />
+            </el-icon>
+          </button>
+
           <el-input
             v-model="inputText"
             class="composer-input"
             :disabled="chatStore.isGenerating"
             maxlength="500"
-            placeholder="输入问题，Enter 发送"
+            placeholder="请输入你的问题..."
             @keydown="handleInputKeydown"
           />
 
-          <button
-            class="composer-send-text"
-            type="button"
-            :disabled="!chatStore.isGenerating && !inputText.trim()"
-            @click="handleComposerAction"
-          >
-            {{ chatStore.isGenerating ? '停止' : '发送' }}
-          </button>
           <el-button
             class="composer-action"
             circle
@@ -102,9 +53,9 @@
             :type="chatStore.isGenerating ? 'danger' : 'primary'"
             @click="handleComposerAction"
           >
-            <el-icon>
+            <el-icon size="18">
               <CircleCloseFilled v-if="chatStore.isGenerating" />
-              <Promotion v-else />
+              <Top v-else />
             </el-icon>
           </el-button>
         </footer>
@@ -113,14 +64,14 @@
       <div v-else class="empty-state">
         <div class="empty-thread__mark">
           <el-icon>
-            <ChatDotRound />
+            <MagicStick />
           </el-icon>
         </div>
         <h2>开始一次知识库问答</h2>
-        <p>选择已有会话，或新建对话后提问。</p>
-        <el-button type="primary" @click="handleCreateConversation">
+        <p>选择左侧已有会话，或新建对话后提问。</p>
+        <el-button class="create-conv-btn" size="large" round @click="handleCreateConversation">
           <el-icon>
-            <Plus />
+            <ChatLineRound />
           </el-icon>
           <span>新建对话</span>
         </el-button>
@@ -183,16 +134,15 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
 import {
-  ChatDotRound,
+  ChatLineRound,
   CircleCloseFilled,
-  Delete,
+  Files,
+  MagicStick,
   Plus,
-  Promotion
+  Top
 } from '@element-plus/icons-vue';
-import * as chatApi from '../api/chat';
 import MessageBubble from '../components/MessageBubble.vue';
 import { useChat } from '../composables/useChat';
 import { useChatStore } from '../stores/chat';
@@ -214,40 +164,6 @@ const getConversationId = (conversation) =>
 
 const getConversationTitle = (conversation) =>
   conversation?.title || conversation?.name || '新对话';
-
-const getConversationCreatedAt = (conversation) =>
-  conversation?.createdAt ?? conversation?.created_at ?? conversation?.updatedAt ?? null;
-
-const getConversationTime = (conversation) => {
-  const date = dayjs(getConversationCreatedAt(conversation));
-  return date.isValid() ? date.format('HH:mm') : '';
-};
-
-const conversationGroups = computed(() => {
-  const groups = [
-    { label: '今天', items: [] },
-    { label: '昨天', items: [] },
-    { label: '更早', items: [] }
-  ];
-
-  chatStore.conversations.forEach((conversation) => {
-    const createdAt = dayjs(getConversationCreatedAt(conversation));
-
-    if (createdAt.isValid() && createdAt.isSame(dayjs(), 'day')) {
-      groups[0].items.push(conversation);
-      return;
-    }
-
-    if (createdAt.isValid() && createdAt.isSame(dayjs().subtract(1, 'day'), 'day')) {
-      groups[1].items.push(conversation);
-      return;
-    }
-
-    groups[2].items.push(conversation);
-  });
-
-  return groups;
-});
 
 const currentConversation = computed(() =>
   chatStore.conversations.find((item) => getConversationId(item) === chatStore.currentConvId)
@@ -335,44 +251,6 @@ const handleCreateConversation = async () => {
   scrollToBottom();
 };
 
-const handleSelectConversation = async (convId) => {
-  if (!convId || convId === chatStore.currentConvId) {
-    return;
-  }
-
-  if (chatStore.isGenerating) {
-    stopGenerating();
-  }
-
-  await chatStore.selectConversation(convId);
-  inputText.value = '';
-  scrollToBottom();
-};
-
-const handleDeleteConversation = async (convId) => {
-  if (!convId) {
-    return;
-  }
-
-  if (chatStore.isGenerating && convId === chatStore.currentConvId) {
-    stopGenerating();
-  }
-
-  await chatApi.deleteConversation(convId);
-  const conversations = await chatStore.loadConversations();
-  const nextConversationId = getConversationId(conversations[0]);
-
-  if (nextConversationId) {
-    await chatStore.selectConversation(nextConversationId);
-  } else {
-    chatStore.currentConvId = null;
-    chatStore.messages = [];
-  }
-
-  ElMessage.success('对话已删除');
-  scrollToBottom();
-};
-
 const handleSend = () => {
   const sent = sendMessage(inputText.value);
 
@@ -398,14 +276,28 @@ const handleInputKeydown = (event) => {
 };
 
 onMounted(async () => {
+  const conversationsPromise = chatStore.conversations.length
+    ? Promise.resolve(chatStore.conversations)
+    : chatStore.loadConversations();
+
   const [conversationsResult] = await Promise.allSettled([
-    chatStore.loadConversations(),
+    conversationsPromise,
     documentStore.loadDocList({ page: 1, size: 20 })
   ]);
 
   const conversations = conversationsResult.status === 'fulfilled'
     ? conversationsResult.value
     : [];
+
+  if (chatStore.currentConvId) {
+    if (!chatStore.messages.length) {
+      await chatStore.selectConversation(chatStore.currentConvId);
+    }
+
+    scrollToBottom();
+    return;
+  }
+
   const firstConversationId = getConversationId(conversations[0]);
 
   if (firstConversationId) {
@@ -430,141 +322,35 @@ onBeforeUnmount(() => {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr) 300px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 304px;
   overflow: hidden;
-  background: #f4f7fb;
-  padding: 8px;
+  background: #ffffff;
 }
 
-.conversation-panel,
 .chat-main,
 .insight-panel {
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+}
+
+.chat-main {
   background: #ffffff;
 }
 
-.conversation-panel {
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-}
-
-.conversation-header {
-  flex: 0 0 auto;
-}
-
-.new-conversation-button {
-  width: 100%;
-  height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: #ffffff;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 800;
-  box-shadow: 0 12px 24px rgba(23, 105, 255, 0.22);
-}
-
-.conversation-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-top: 18px;
-}
-
-.conversation-group-label {
-  margin: 14px 0 10px;
-  color: #475467;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.conversation-item {
-  position: relative;
-  width: 100%;
-  height: 52px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #475467;
-  cursor: pointer;
-  padding: 0 12px;
-  text-align: left;
-}
-
-.conversation-item:hover,
-.conversation-item.active {
-  background: #eef5ff;
-  color: var(--color-primary);
-}
-
-.conversation-item.active {
-  font-weight: 800;
-}
-
-.conversation-title {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.conversation-item time {
-  color: #98a2b3;
-  font-size: 12px;
-}
-
-.delete-trigger {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  width: 26px;
-  height: 26px;
-  display: none;
-  place-items: center;
-  border-radius: 6px;
-  color: #98a2b3;
-  transform: translateY(-50%);
-}
-
-.conversation-item:hover .delete-trigger {
-  display: grid;
-  background: #ffffff;
-}
-
-.conversation-empty,
-.panel-empty {
-  display: grid;
-  place-items: center;
-  min-height: 120px;
-  color: var(--color-text-tertiary);
-  font-size: 13px;
+.insight-panel {
+  background: #f5f6f8;
 }
 
 .chat-main {
   display: grid;
-  grid-template-rows: 62px minmax(0, 1fr) 82px;
+  grid-template-rows: 72px minmax(0, 1fr) 92px;
 }
 
 .chat-header {
   display: flex;
   align-items: center;
   gap: 18px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 18px;
+  padding: 0 clamp(22px, 5vw, 64px);
 }
 
 .chat-title {
@@ -589,14 +375,14 @@ onBeforeUnmount(() => {
 }
 
 .source-count {
-  height: 34px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   margin-left: auto;
   border-radius: 8px;
   background: #edf5ff;
   color: var(--color-primary);
-  padding: 0 13px;
+  padding: 0 12px;
   font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
@@ -605,8 +391,8 @@ onBeforeUnmount(() => {
 .message-list {
   min-height: 0;
   overflow-y: auto;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-  padding: 22px 28px 36px;
+  background: #ffffff;
+  padding: 28px clamp(22px, 6vw, 78px) 36px;
 }
 
 .empty-thread,
@@ -647,44 +433,67 @@ onBeforeUnmount(() => {
 }
 
 .empty-state {
+  grid-row: 1 / -1;
   padding: 32px;
 }
 
-.empty-state .el-button {
+.create-conv-btn {
   margin-top: 22px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  height: auto;
+  box-shadow: 0 2px 8px rgba(23, 105, 255, 0.25);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.create-conv-btn:hover {
+  box-shadow: 0 4px 16px rgba(23, 105, 255, 0.35);
+  transform: translateY(-1px);
 }
 
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 44px;
+  grid-template-columns: 40px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 10px;
-  border-top: 1px solid var(--color-border);
+  gap: 12px;
   background: #ffffff;
-  padding: 14px 18px;
+  padding: 16px 24px;
+}
+
+.composer-tool {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.composer-tool:hover {
+  background: #ececec;
+  color: #111827;
 }
 
 .composer-input :deep(.el-input__wrapper) {
   height: 52px;
-  border-radius: 8px;
+  border-radius: 26px;
   background: #ffffff;
+  box-shadow: 0 0 0 1px #e4e7ed inset;
+  padding: 0 20px;
 }
 
-.composer-send-text {
-  height: 36px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-primary);
-  cursor: pointer;
-  padding: 0 8px;
-  font-size: 14px;
-  font-weight: 800;
+.composer-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #c8ccd4 inset;
 }
 
-.composer-send-text:disabled {
-  cursor: not-allowed;
-  color: #b6c0cf;
+.composer-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px var(--color-primary) inset;
+  background: #ffffff;
 }
 
 .composer-action {
@@ -694,7 +503,8 @@ onBeforeUnmount(() => {
 
 .insight-panel {
   display: grid;
-  grid-template-rows: 52px auto auto minmax(0, 1fr);
+  grid-template-rows: 56px auto auto minmax(0, 1fr);
+  border-left: 1px solid #eeeeef;
 }
 
 .source-panel-header,
@@ -706,7 +516,7 @@ onBeforeUnmount(() => {
 }
 
 .source-panel-header {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid #eeeeef;
   padding: 0 16px;
 }
 
@@ -722,7 +532,7 @@ onBeforeUnmount(() => {
   margin: 18px;
   border: 1px solid #dfe7f4;
   border-radius: 8px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: #fbfcff;
   padding: 16px;
 }
 
@@ -786,7 +596,7 @@ onBeforeUnmount(() => {
 .recent-doc-section {
   min-height: 0;
   overflow: hidden;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid #eeeeef;
   padding: 16px 16px 0;
 }
 
@@ -840,9 +650,17 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-@media (max-width: 1280px) {
+.panel-empty {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+@media (max-width: 1180px) {
   .chat-view {
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .insight-panel {
@@ -851,17 +669,17 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 820px) {
-  .chat-view {
-    grid-template-columns: 1fr;
-    overflow: auto;
-  }
-
-  .conversation-panel {
-    max-height: 280px;
-  }
-
   .chat-main {
-    min-height: 680px;
+    grid-template-rows: 72px minmax(0, 1fr) auto;
+  }
+
+  .composer {
+    grid-template-columns: 40px minmax(0, 1fr) 44px;
+  }
+
+  .knowledge-chip,
+  .composer-send-text {
+    display: none;
   }
 }
 </style>

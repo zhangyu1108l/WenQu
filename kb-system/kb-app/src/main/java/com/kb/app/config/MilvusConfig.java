@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
  *     <li>由 Spring 统一管理生命周期，后续文档向量写入、检索、删除逻辑可直接注入使用。</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Configuration
 @EnableConfigurationProperties(MilvusProperties.class)
@@ -25,7 +25,7 @@ public class MilvusConfig {
     /**
      * 构建 MilvusServiceClient Bean。
      * <p>
-     * 连接参数只包含当前架构需要的 host/port，认证、TLS 等高级配置不在 Step 5-A 范围内。
+     * 连接参数只包含当前架构需要的 host/port，认证、TLS 等高级配置不在步骤 5-A 范围内。
      *
      * @param milvusProperties Milvus 配置属性
      * @return 全局复用的 MilvusServiceClient 实例

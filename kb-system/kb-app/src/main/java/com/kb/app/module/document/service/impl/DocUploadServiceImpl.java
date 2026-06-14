@@ -46,7 +46,7 @@ import java.util.Set;
  *     <li>异步线程失败时自动标记任务和文档状态为 FAILED</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service
@@ -84,7 +84,7 @@ public class DocUploadServiceImpl implements DocUploadService {
      * @param file     上传的文件
      * @param tenantId 租户ID
      * @param userId   上传用户ID
-     * @return {docId, taskId}
+     * @return 包含 {docId, taskId} 的上传结果
      */
     @Override
     public Map<String, Long> upload(MultipartFile file, Long tenantId, Long userId) {

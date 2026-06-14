@@ -1,0 +1,17 @@
+# Exclude local Java build outputs so container builds are produced from clean sources.
+*/target/
+
+# Exclude frontend dependencies because they should be installed inside the frontend container build.
+*/node_modules/
+
+# Exclude Git metadata to keep build context smaller and avoid leaking repository history.
+.git/
+
+# Exclude environment files because sensitive values must not be copied into images.
+.env
+
+# Exclude Markdown documentation to keep the Docker build context focused on build inputs.
+*.md
+
+# Exclude built frontend assets because the frontend image should produce its own dist output.
+kb-frontend/dist/

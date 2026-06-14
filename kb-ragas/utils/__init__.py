@@ -1,2 +1,2 @@
-# Utilities package: shared logging and Java callback helpers for the sidecar.
-# Later steps will extend this package without adding business logic here.
+# 工具包：提供侧车共享日志和 Java 回调辅助能力。
+# 后续步骤会扩展该包，但这里不承载业务逻辑。

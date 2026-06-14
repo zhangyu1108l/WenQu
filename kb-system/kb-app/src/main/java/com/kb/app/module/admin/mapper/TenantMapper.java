@@ -14,12 +14,12 @@ import org.apache.ibatis.annotations.Mapper;
  * 必须在 {@code TenantLineInnerInterceptor} 中将此表加入忽略列表，
  * 否则拦截器会错误地追加 AND tenant_id = ? 导致查询失败。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface TenantMapper extends BaseMapper<TenantDO> {
     // MyBatis-Plus BaseMapper 已提供：
-    //   insert / deleteById / updateById / selectById
-    //   selectList / selectPage / selectCount 等常用方法
+    //   常用方法：insert / deleteById / updateById / selectById
+    //   以及 selectList / selectPage / selectCount 等
     // 如需自定义 SQL，在此接口中追加方法并配合 @Select 或 XML
 }

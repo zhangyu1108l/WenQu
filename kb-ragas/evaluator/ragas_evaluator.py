@@ -1,19 +1,24 @@
-"""Core Ragas evaluator for computing semantic RAG quality metrics."""
+"""用于计算 RAG 语义质量指标的核心 Ragas 评估器。"""
 
 import asyncio
 import math
 import os
+import sys
+from pathlib import Path
 from typing import List
 
 from datasets import Dataset
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from ragas import evaluate
-from ragas.metrics import (
+from ragas.metrics.collections import (
     answer_relevancy,
     context_precision,
     context_recall,
     faithfulness,
 )
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from models.schema import SingleEvalResult
 from utils.logger import get_logger
@@ -28,7 +33,7 @@ DEFAULT_SINGLE_CASE_TIMEOUT_SECONDS = 180
 class RagasEvaluator:
     # Ragas 四项指标计算流程：
     #
-    # question + answer + contexts + ground_truth
+    # 输入字段：question + answer + contexts + ground_truth
     #   ↓
     # Faithfulness:      LLM判断 answer 每句话能否从 contexts 推断
     # Answer Relevancy:  LLM从answer逆向生成问题，与原question算向量相似度
@@ -74,7 +79,7 @@ class RagasEvaluator:
         model_answer: str,
         contexts: List[str],
     ) -> dict:
-        """Evaluate one RAG answer with four Ragas metrics."""
+        """使用四个 Ragas 指标评估一个 RAG 回答。"""
 
         # Ragas 内部会多次调用 DeepSeek：每个指标都可能需要多轮 LLM 判断，
         # 单个用例通常会消耗约 10~20 次 API 调用。
@@ -164,7 +169,7 @@ class RagasEvaluator:
             return DEFAULT_SINGLE_CASE_TIMEOUT_SECONDS
 
     def calculate_averages(self, results: List[SingleEvalResult]) -> dict:
-        """Calculate batch averages while ignoring failed metric values."""
+        """忽略失败的指标值，计算批次均值。"""
 
         def average(metric_name: str) -> float | None:
             # 过滤 None 是为了避免少数用例评估失败拉低整体均值。
@@ -185,3 +190,11 @@ class RagasEvaluator:
             "avg_context_recall": average("context_recall"),
             "avg_context_precision": average("context_precision"),
         }
+
+
+if __name__ == "__main__":
+    print(
+        "ragas_evaluator.py only defines RagasEvaluator. Start kb-ragas with:\n"
+        "  cd D:\\Java\\WenQu\\kb-ragas\n"
+        "  .\\.venv\\Scripts\\python.exe main.py"
+    )

@@ -1,2 +1,2 @@
-# Evaluator package: Ragas metric orchestration and background task execution.
-# Steps 9-D and 9-E will add the concrete evaluator and executor.
+# 评估器包：负责 Ragas 指标编排和后台任务执行。
+# 步骤 9-D 和步骤 9-E 会补充具体评估器与执行器。

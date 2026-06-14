@@ -27,15 +27,15 @@ PROJECT_TESSDATA_DIR = Path(__file__).resolve().parents[1] / "tessdata"
 
 
 class OcrDependencyError(RuntimeError):
-    """Raised when OCR is requested but the Tesseract runtime is unavailable."""
+    """请求 OCR 但 Tesseract 运行时不可用时抛出。"""
 
 
 class OcrExecutionError(RuntimeError):
-    """Raised when Tesseract is installed but cannot complete OCR."""
+    """Tesseract 已安装但无法完成 OCR 时抛出。"""
 
 
 def _configure_tesseract_cmd() -> None:
-    """Allow local Windows dev to run OCR without requiring PATH changes."""
+    """允许本地 Windows 开发环境在不修改 PATH 的情况下运行 OCR。"""
     configured_cmd = os.getenv("TESSERACT_CMD") or os.getenv("TESSERACT_PATH")
     candidates = []
     if configured_cmd:

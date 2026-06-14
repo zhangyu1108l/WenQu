@@ -1,4 +1,4 @@
-"""Async executor for complete Ragas evaluation batches."""
+"""完整 Ragas 评估批次的异步执行器。"""
 
 import asyncio
 from typing import Any
@@ -15,14 +15,14 @@ CASE_INTERVAL_SECONDS = 2
 
 
 class TaskExecutor:
-    """Run one evaluation batch in the background and report results to Java."""
+    """在后台运行一个评估批次，并将结果回传给 Java。"""
 
     def __init__(self, rag_client: RagClient, evaluator: RagasEvaluator):
         self.rag_client = rag_client
         self.evaluator = evaluator
 
     async def execute(self, request: EvaluateRequest) -> None:
-        """Execute the full evaluation flow for one accepted batch."""
+        """执行一个已接收批次的完整评估流程。"""
 
         single_results: list[SingleEvalResult] = []
 
@@ -33,15 +33,14 @@ class TaskExecutor:
                 len(request.cases),
             )
 
-            # Cases run serially instead of asyncio.gather concurrency because
-            # concurrent DeepSeek/Ragas calls can trigger provider rate limits.
-            # Resume-project batches are small, so serial execution is stable
-            # and fast enough for this sidecar.
+            # 用例串行执行而不是通过 asyncio.gather 并发执行，
+            # 因为并发的 DeepSeek/Ragas 调用可能触发供应商限流。
+            # 当前项目的评估批次规模较小，串行执行对该侧车来说足够稳定且速度可接受。
             case_count = len(request.cases)
             for case_index, case in enumerate(request.cases, start=1):
                 try:
-                    # Long evaluations need detailed milestone logs; they make
-                    # it clear which case is currently blocked or failed.
+                    # 长耗时评估需要详细里程碑日志，
+                    # 便于确认当前阻塞或失败的是哪个用例。
                     logger.info(
                         "Evaluating case %s/%s case_id=%s batch_id=%s",
                         case_index,
@@ -106,8 +105,8 @@ class TaskExecutor:
                         request.batch_id,
                     )
                 finally:
-                    # Sleep after each case so the API rate-limit window has
-                    # breathing room before the next DeepSeek/Ragas call burst.
+                    # 每个用例结束后暂停一小段时间，
+                    # 给 API 限流窗口留出恢复空间，再发起下一轮 DeepSeek/Ragas 调用。
                     await asyncio.sleep(CASE_INTERVAL_SECONDS)
 
             averages = self.evaluator.calculate_averages(single_results)
@@ -131,8 +130,8 @@ class TaskExecutor:
                 batch_result.avg_faithfulness,
             )
         except Exception as exc:
-            # Even when the whole batch fails, Java still needs a callback so it
-            # can mark eval_batch as FAILED instead of leaving it RUNNING forever.
+            # 即使整个批次失败，也要回调 Java，
+            # 让 eval_batch 标记为 FAILED，避免一直停留在 RUNNING。
             failed_result = BatchEvalResult(
                 batch_id=request.batch_id,
                 status="FAILED",
@@ -148,7 +147,7 @@ class TaskExecutor:
 
     @staticmethod
     def _average_value(averages: dict[str, Any], metric_name: str) -> float | None:
-        """Read averages from either avg_* or plain metric keys."""
+        """从 avg_* 或普通指标键中读取均值。"""
 
         avg_key = f"avg_{metric_name}"
         if avg_key in averages:

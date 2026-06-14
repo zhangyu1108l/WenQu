@@ -1,2 +1,2 @@
-# Models package: request and response schemas for the Ragas sidecar.
-# Step 9-B will populate the concrete Pydantic models.
+# 模型包：定义 Ragas 侧车的请求和响应结构。
+# 步骤 9-B 会补充具体的 Pydantic 模型。

@@ -1,4 +1,4 @@
-"""Java callback helper for posting completed Ragas evaluation results."""
+"""用于回传完整 Ragas 评估结果的 Java 回调助手。"""
 
 import asyncio
 
@@ -15,23 +15,21 @@ CALLBACK_TIMEOUT_SECONDS = 30
 
 
 async def post_callback(callback_url: str, result: BatchEvalResult) -> bool:
-    """Post a completed batch evaluation result back to the Java service.
+    """把已完成的批次评估结果回传给 Java 服务。
 
-    callback_url format:
+    callback_url 格式：
     http://app:8081/internal/eval/callback
 
-    The Java endpoint writes callback payloads into the MySQL eval_result table
-    and updates the eval_batch aggregate status and metric averages.
+    Java 接口会把回调载荷写入 MySQL eval_result 表，
+    并更新 eval_batch 的聚合状态和指标均值。
     """
 
-    # Serialize before sending so every retry posts the exact same immutable
-    # payload to Java.
+    # 发送前先序列化，确保每次重试都向 Java 提交完全相同的不可变载荷。
     try:
         payload = result.model_dump_json()
     except Exception:
-        # Callback failure is logged instead of raised because evaluation itself
-        # has already finished; raising here would interrupt the whole async
-        # flow without recovering the result.
+        # 回调失败只记录日志而不抛出异常，因为评估本身已经完成；
+        # 此处抛出异常会中断整个异步流程，却无法恢复结果。
         logger.exception("Failed to serialize callback payload batch_id=%s", result.batch_id)
         return False
 
@@ -79,13 +77,12 @@ async def post_callback(callback_url: str, result: BatchEvalResult) -> bool:
                 )
 
             if attempt < MAX_CALLBACK_ATTEMPTS:
-                # Network jitter can make a single callback fail, but evaluation
-                # results must not be lost. The 5-second interval gives the
-                # Docker network or Java service a short recovery window.
+                # 网络抖动可能导致单次回调失败，但评估结果不能丢失。
+                # 5 秒间隔给 Docker 网络或 Java 服务留出短暂恢复窗口。
                 await asyncio.sleep(RETRY_INTERVAL_SECONDS)
 
-    # After all retries fail, only record the error. Callback failure should not
-    # change the evaluation outcome or raise an exception that stops the worker.
+    # 所有重试失败后只记录错误。
+    # 回调失败不应改变评估结果，也不应抛出会停止 worker 的异常。
     logger.error(
         "Callback failed after %s attempts batch_id=%s callback_url=%s",
         MAX_CALLBACK_ATTEMPTS,

@@ -37,7 +37,7 @@ import java.util.concurrent.Executor;
  *   ↓ 异步写MySQL + 更新Redis
  * </pre>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component
@@ -162,7 +162,7 @@ public class RagChain {
      *
      * @param question 用户原始问题
      * @param tenantId 租户ID，用于定位租户 Milvus Collection
-     * @return modelAnswer + contexts
+     * @return modelAnswer 与 contexts
      */
     public Map<String, Object> askSync(String question, Long tenantId) {
         List<ChatMessage> history = historyService.getWindow(EVAL_CONVERSATION_ID, HISTORY_MAX_ROUNDS);

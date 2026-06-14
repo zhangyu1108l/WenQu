@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <p>
  * 配置项说明：
  * <ul>
- *     <li><b>endpoint</b> — MinIO 服务端地址，如 http://localhost:9000 或 Docker 内部 http://minio:9000</li>
+ *     <li><b>endpoint</b> — MinIO 服务端地址，必须从 MINIO_ENDPOINT 注入</li>
  *     <li><b>accessKey</b> — 访问密钥，必须从环境变量 MINIO_ACCESS_KEY 注入，禁止硬编码</li>
  *     <li><b>secretKey</b> — 秘密密钥，必须从环境变量 MINIO_SECRET_KEY 注入，禁止硬编码</li>
  *     <li><b>presignedExpireMinutes</b> — 预签名 URL 有效期（分钟），默认 15 分钟</li>
@@ -17,21 +17,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 对应 yml 配置：
  * <pre>
  * minio:
- *   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+ *   endpoint: ${MINIO_ENDPOINT:}
  *   access-key: ${MINIO_ACCESS_KEY:}
  *   secret-key: ${MINIO_SECRET_KEY:}
  *   presigned-expire-minutes: 15
  * </pre>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @ConfigurationProperties(prefix = "minio")
 public class MinioProperties {
 
     /**
-     * MinIO 服务端地址。
-     * 本地开发使用 http://localhost:9000，Docker 内部使用 http://minio:9000。
+     * MinIO 服务端地址，从配置文件或环境变量读取。
      */
     private String endpoint;
 

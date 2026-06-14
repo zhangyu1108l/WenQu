@@ -18,22 +18,21 @@ import org.springframework.context.annotation.Configuration;
  * 注意：JwtAuthFilter 实现了 GlobalFilter 并标注 @Component，
  * 由 Spring 容器自动注册到过滤器链中，无需在此手动注册。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Configuration
 @EnableConfigurationProperties(WhiteListProperties.class)
 public class GatewayConfig {
 
-    /** kb-app 服务地址，从配置文件读取，本地开发为 http://localhost:8082 */
-    @Value("${gateway.app-service-url:http://app:8081}")
+    /** kb-app 服务地址，从配置文件读取。 */
+    @Value("${gateway.app-service-url}")
     private String appServiceUrl;
 
     /**
      * 定义 Gateway 路由规则。
      * <p>
      * 所有 /api/** 路径的请求转发到 kb-app 服务。
-     * Docker 环境中通过服务名 app 互访（http://app:8081），
-     * 本地开发时在 application-dev.yml 中覆盖为 localhost:8082。
+     * 下游服务地址由 application-{profile}.yml 或环境变量提供。
      *
      * @param builder 路由构建器
      * @return 路由定位器

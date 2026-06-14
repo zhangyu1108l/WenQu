@@ -1,2 +1,2 @@
-# RAG package: clients and adapters for invoking the Java RAG flow during evaluation.
-# Step 9-C will add the concrete RAG client implementation.
+# RAG 包：提供评估时调用 Java RAG 流程的客户端和适配器。
+# 步骤 9-C 会补充具体的 RAG 客户端实现。

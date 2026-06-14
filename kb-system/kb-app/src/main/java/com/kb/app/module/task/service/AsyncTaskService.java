@@ -16,10 +16,10 @@ import com.kb.app.module.task.entity.AsyncTaskDO;
  * 调用方：
  * <ul>
  *     <li>DocUploadServiceImpl — 文档处理任务（DOC_PROCESS）</li>
- *     <li>EvalServiceImpl — Ragas 评估任务（RAGAS_EVAL，Step 9 实现）</li>
+ *     <li>EvalServiceImpl — Ragas 评估任务（RAGAS_EVAL，步骤 9 实现）</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface AsyncTaskService {
 
