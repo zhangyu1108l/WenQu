@@ -13,7 +13,7 @@ import lombok.Data;
  * 新注册用户的默认角色为 2（USER，普通用户），
  * 租户管理员可以后续通过 PUT /api/admin/users/{id}/role 修改角色。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 public class RegisterRequest {

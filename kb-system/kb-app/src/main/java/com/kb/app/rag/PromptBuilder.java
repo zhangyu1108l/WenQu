@@ -17,7 +17,7 @@ import java.util.List;
  * 2. 约束 LLM 只根据文档内容回答，防止模型使用自身知识补全答案而产生幻觉。
  * 3. 段落来源清晰，让回答具备可追溯性，便于用户核对原始文档依据。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Component
 public class PromptBuilder {

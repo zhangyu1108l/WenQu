@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  *     <li>传入 null → 清除过期时间，文档永不过期</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 public class ExpireRequest {

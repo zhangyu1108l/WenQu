@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * Controller 层只做参数校验和调用转发，不包含任何业务逻辑。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @RestController
 @RequestMapping("/api/auth")

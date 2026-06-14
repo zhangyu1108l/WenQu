@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * 进度条和失败原因；updatedAt 可用于判断任务是否卡住：
  * 如果 status=RUNNING 且超过 30 分钟未更新，可认为任务异常，需要提示管理员处理。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

@@ -15,7 +15,7 @@ import java.util.List;
  * role 返回字符串 "user" / "assistant"，而不是数据库中的数字 0 / 1。
  * 这样前端渲染时语义更清晰，也避免把数据库枚举值直接暴露给页面逻辑。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

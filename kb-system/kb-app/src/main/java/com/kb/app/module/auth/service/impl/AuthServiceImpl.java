@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
  *     <li>登出使用 Redis 黑名单机制，因为 JWT 是无状态的，服务端无法主动使其失效</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service

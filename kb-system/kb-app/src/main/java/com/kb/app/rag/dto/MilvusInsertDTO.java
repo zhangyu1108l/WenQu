@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
  * 该对象只描述写入 Milvus 时需要按列拆分的数据，最终会被
  * {@code EmbeddingServiceImpl} 转换成 Milvus SDK 要求的列式结构。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

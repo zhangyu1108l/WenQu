@@ -27,7 +27,7 @@ import java.util.List;
  *     <li>删除：删除文档时需同步清理 MinIO + Milvus + doc_chunk + document_version</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface DocumentMapper extends BaseMapper<DocumentDO> {

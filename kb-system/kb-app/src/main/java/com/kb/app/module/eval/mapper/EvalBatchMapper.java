@@ -25,7 +25,7 @@ import java.util.List;
  *     <li>批次详情：按 id 查询单条批次（关联 eval_result 明细）</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface EvalBatchMapper extends BaseMapper<EvalBatchDO> {

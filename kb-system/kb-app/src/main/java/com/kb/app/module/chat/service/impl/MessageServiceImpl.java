@@ -30,7 +30,7 @@ import java.util.Objects;
  * <p>
  * message 表保存完整对话历史；Redis 只保留最近 5 轮用于 RAG 上下文窗口。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service

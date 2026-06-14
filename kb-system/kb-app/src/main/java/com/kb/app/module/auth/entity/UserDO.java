@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
  * <p>
  * 密码存储规则：必须使用 BCrypt 加密，禁止明文存储。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

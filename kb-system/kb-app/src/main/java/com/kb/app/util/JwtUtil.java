@@ -35,7 +35,7 @@ import java.util.Date;
  *     <li><b>exp</b> — 标准字段，过期时间</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

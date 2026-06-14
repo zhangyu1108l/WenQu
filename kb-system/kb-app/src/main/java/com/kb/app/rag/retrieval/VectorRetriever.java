@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 向量检索 Service。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface VectorRetriever {
 

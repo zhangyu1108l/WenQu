@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 对应 document_version 表中前端需要的字段，
  * 隐藏 minio_bucket / minio_key 等内部存储细节。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

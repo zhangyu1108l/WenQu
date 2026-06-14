@@ -1,21 +1,21 @@
 # ============================================================
-# WenQu kb-app Docker profile config
+# 问渠 kb-app Docker profile 配置
 # ============================================================
-# application-dev.yml is for local development and usually uses localhost.
-# application-docker.yml is for Docker Compose and uses service names such as
-# mysql, redis, milvus, minio, parser, and ragas-svc.
+# application-dev.yml 用于本地开发，通常使用 localhost。
+# application-docker.yml 用于 Docker Compose，并使用以下服务名：
+# mysql、redis、milvus、minio、parser 和 ragas-svc。
 #
-# docker-compose.yml sets SPRING_PROFILES_ACTIVE=docker.
-# Spring Boot then loads application-docker.yml and overrides application.yml.
+# docker-compose.yml 会设置 SPRING_PROFILES_ACTIVE=docker。
+# 随后 Spring Boot 加载 application-docker.yml，并覆盖 application.yml 中的配置。
 # ============================================================
 
 server:
-  # Docker difference from dev: kb-app listens on internal port 8081.
+# 与开发环境差异：kb-app 监听内部端口 8081。
   port: 8081
 
 spring:
-  # Docker difference from dev: use mysql service name. In a container,
-  # localhost would point to the app container itself.
+# 与开发环境差异：使用 mysql 服务名。在容器中，
+# localhost 会指向 app 容器自身。
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:kb_system}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
@@ -26,7 +26,7 @@ spring:
       maximum-pool-size: 20
       connection-timeout: 30000
 
-  # Docker difference from dev: use redis service name instead of localhost.
+# 与开发环境差异：使用 redis 服务名，不使用 localhost。
   data:
     redis:
       host: redis
@@ -40,8 +40,8 @@ spring:
           max-idle: 10
           max-active: 20
 
-  # Docker difference from dev: API keys still come from environment variables.
-  # No image rebuild is needed after changing them; restart containers instead.
+# 与开发环境差异：API Key 仍然来自环境变量。
+# 修改后不需要重建镜像，重启容器即可。
   ai:
     openai:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
@@ -56,8 +56,8 @@ spring:
         temperature: 0.3
         max-tokens: 2048
 
-# Docker difference from dev: Zhipu API key comes from env; model and dimension
-# stay fixed by architecture as embedding-3 and 2048.
+# 与开发环境差异：智谱 API Key 来自环境变量；模型和维度
+# 按架构固定为 embedding-3 和 2048。
 zhipu:
   embedding:
     base-url: ${ZHIPU_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
@@ -65,21 +65,21 @@ zhipu:
     model: embedding-3
     dimensions: 2048
 
-# Docker difference from dev: use application MinIO service name minio.
-# This is app document storage, not Milvus internal milvus-minio.
+# 与开发环境差异：使用应用 MinIO 服务名 minio。
+# 这是应用文档存储，不是 Milvus 内部的 milvus-minio。
 minio:
   endpoint: http://minio:9000
   access-key: ${MINIO_ROOT_USER:minioadmin}
   secret-key: ${MINIO_ROOT_PASSWORD:}
   presigned-expire-minutes: 15
 
-# Docker difference from dev: use Milvus service name milvus.
+# 与开发环境差异：使用 Milvus 服务名 milvus。
 milvus:
   host: milvus
   port: 19530
 
-# Docker difference from dev: JWT secret comes from env and must match gateway.
-# JwtUtil currently reads token TTL values as milliseconds.
+# 与开发环境差异：JWT secret 来自环境变量，并且必须与 gateway 一致。
+# JwtUtil 当前按毫秒读取 token TTL 值。
 jwt:
   secret: ${JWT_SECRET:}
   access-token-expire: 3600000
@@ -92,19 +92,19 @@ async:
     queue-capacity: 100
     thread-name-prefix: kb-async-
 
-# Docker difference from dev: use parser service name instead of localhost.
+# 与开发环境差异：使用 parser 服务名，不使用 localhost。
 parser:
   base-url: http://parser:8090
 
-# Docker difference from dev: use ragas-svc service name instead of localhost.
+# 与开发环境差异：使用 ragas-svc 服务名，不使用 localhost。
 ragas:
   base-url: http://ragas-svc:8091
 
-# Docker difference from dev: Ragas callback must use Docker internal app:8081.
+# 与开发环境差异：Ragas 回调必须使用 Docker 内部地址 app:8081。
 sidecar:
   eval-callback-url: http://app:8081/internal/eval/callback
 
-# Same as application.yml: expose only health for Docker healthchecks.
+# 与 application.yml 一致：仅暴露 health 端点用于 Docker 健康检查。
 management:
   endpoints:
     web:
@@ -114,7 +114,7 @@ management:
     health:
       show-details: never
 
-# Docker keeps INFO logs; dev profile enables DEBUG separately.
+# Docker 环境保持 INFO 日志；dev profile 会单独启用 DEBUG。
 logging:
   level:
     root: INFO

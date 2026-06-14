@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 职责：JWT 校验、Redis 黑名单检查、请求头注入（X-User-Id / X-Tenant-Id）、路由转发。
  * 运行端口：8080（Docker 内部），由 Nginx 反向代理对外暴露。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @SpringBootApplication
 public class KbGatewayApplication {

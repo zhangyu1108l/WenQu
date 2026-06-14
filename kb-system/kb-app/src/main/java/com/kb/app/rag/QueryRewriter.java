@@ -22,7 +22,7 @@ import java.util.List;
  * 当前问题："那病假呢？"
  * 改写后："病假天数是如何规定的？"
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

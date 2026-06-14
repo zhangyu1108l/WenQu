@@ -12,7 +12,7 @@ import java.util.Map;
  * 不让用户等待耗时的解析、Embedding 等操作。耗时操作由 @Async 异步线程池执行，
  * 前端通过 GET /api/tasks/{taskId}/status 每 2 秒轮询进度。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface DocUploadService {
 

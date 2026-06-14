@@ -25,7 +25,7 @@ import java.util.List;
  *     <li>文档删除：按 document_id 删除所有 chunk，需先删 Milvus 向量</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface DocChunkMapper extends BaseMapper<DocChunkDO> {

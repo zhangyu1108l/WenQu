@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
  *     <li>冷启动：Redis 过期后从 MySQL message 表重建最近 5 轮</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

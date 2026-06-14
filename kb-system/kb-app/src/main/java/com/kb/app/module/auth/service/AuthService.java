@@ -9,7 +9,7 @@ import com.kb.app.module.auth.dto.RegisterRequest;
  * <p>
  * 所有认证相关的业务逻辑封装在此接口中，Controller 层只做参数校验和调用转发。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface AuthService {
 

@@ -26,7 +26,7 @@ import java.util.List;
  *     <li>删除用例：按 id 删除单条用例</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface EvalCaseMapper extends BaseMapper<EvalCaseDO> {

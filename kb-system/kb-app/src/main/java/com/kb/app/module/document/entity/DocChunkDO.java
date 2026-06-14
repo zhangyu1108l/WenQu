@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * doc_chunk 表包含 tenant_id（冗余字段，加速按租户查询），
  * 所有查询会被租户拦截器自动追加租户隔离条件。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

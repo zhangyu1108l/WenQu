@@ -36,7 +36,7 @@ import java.util.Set;
  * 忽略原因：这些表没有 tenant_id 列，如果拦截器对它们追加条件会导致 SQL 报错。
  * 它们的数据安全通过外键关联的父表（已有 tenant_id 隔离）来保证。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public class TenantInterceptor implements TenantLineHandler {
 

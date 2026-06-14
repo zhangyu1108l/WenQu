@@ -10,7 +10,7 @@ import java.util.List;
  * <p>
  * 负责从 MySQL 读取完整消息历史，以及在 RAG 生成完成后异步落库用户问题与 AI 回答。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface MessageService {
 

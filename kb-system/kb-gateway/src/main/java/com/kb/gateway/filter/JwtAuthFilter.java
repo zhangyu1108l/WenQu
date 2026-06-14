@@ -43,7 +43,7 @@ import java.nio.charset.StandardCharsets;
  * → ④ 解析 JWT → ⑤ 提取用户信息 → ⑥ 写入请求头 → ⑦ 放行到下游
  * </pre>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

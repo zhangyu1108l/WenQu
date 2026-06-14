@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
  *     <li>userId / username / role / tenantId — 前端展示和权限判断</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

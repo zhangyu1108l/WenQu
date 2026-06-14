@@ -25,7 +25,7 @@ import java.util.List;
  * 命名为 tenant_{tenantId}_docs，避免不同租户的文档向量在同一 Collection 中混写或误检索。
  * 本类只负责 Collection 的创建、初始化和整库删除，不包含向量写入和检索逻辑。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Component
 public class MilvusCollectionHelper {
@@ -69,6 +69,10 @@ public class MilvusCollectionHelper {
             throw new IllegalArgumentException("租户ID不能为空");
         }
         return milvusProperties.getCollectionPrefix() + tenantId + COLLECTION_SUFFIX;
+    }
+
+    public boolean collectionExists(Long tenantId) {
+        return hasCollection(getCollectionName(tenantId));
     }
 
     /**

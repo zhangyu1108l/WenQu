@@ -9,7 +9,7 @@ import java.util.List;
  * <p>
  * 负责维护 Redis 中的会话滑动窗口，并在 Redis 缓存失效时从 MySQL message 表重建最近历史。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface ConversationHistoryService {
 

@@ -21,7 +21,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *   refresh-token-expire: 604800000
  * </pre>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @ConfigurationProperties(prefix = "jwt")

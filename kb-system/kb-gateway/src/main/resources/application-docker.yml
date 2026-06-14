@@ -1,17 +1,17 @@
 # ============================================================
-# WenQu kb-gateway Docker profile config
+# 问渠 kb-gateway Docker profile 配置
 # ============================================================
-# application-dev.yml is for local development and usually uses localhost.
-# application-docker.yml is for Docker Compose: Redis is redis, and the
-# downstream app target is http://app:8081.
+# application-dev.yml 用于本地开发，通常使用 localhost。
+# application-docker.yml 用于 Docker Compose：Redis 使用 redis 服务名，
+# 下游 app 目标地址为 http://app:8081。
 #
-# docker-compose.yml sets SPRING_PROFILES_ACTIVE=docker.
-# Spring Boot then loads application-docker.yml and overrides application.yml.
+# docker-compose.yml 会设置 SPRING_PROFILES_ACTIVE=docker。
+# 随后 Spring Boot 加载 application-docker.yml，并覆盖 application.yml 中的配置。
 # ============================================================
 
 spring:
-  # Docker difference from dev: Gateway still uses reactive Redis, but connects
-  # through the redis service name inside the Docker network.
+# 与开发环境差异：Gateway 仍使用 reactive Redis，但会通过
+# Docker 网络中的 redis 服务名连接。
   data:
     redis:
       host: redis
@@ -20,15 +20,15 @@ spring:
       database: 0
       timeout: 5000ms
 
-# Docker difference from dev: JWT secret comes from env and must match kb-app.
+# 与开发环境差异：JWT secret 来自环境变量，并且必须与 kb-app 一致。
 jwt:
   secret: ${JWT_SECRET:}
 
-# Docker difference from dev: route to app service name instead of localhost.
+# 与开发环境差异：路由到 app 服务名，不使用 localhost。
 gateway:
   app-service-url: http://app:8081
 
-# Same as application.yml: expose only health for Docker healthchecks.
+# 与 application.yml 一致：仅暴露 health 端点用于 Docker 健康检查。
 management:
   endpoints:
     web:
@@ -38,7 +38,7 @@ management:
     health:
       show-details: never
 
-# Docker keeps INFO logs; dev profile enables DEBUG separately.
+# Docker 环境保持 INFO 日志；dev profile 会单独启用 DEBUG。
 logging:
   level:
     root: INFO

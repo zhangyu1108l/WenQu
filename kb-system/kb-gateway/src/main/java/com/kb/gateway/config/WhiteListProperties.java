@@ -27,7 +27,7 @@ import java.util.List;
  *       - /api/auth/login
  * </pre>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @ConfigurationProperties(prefix = "gateway.white-list")

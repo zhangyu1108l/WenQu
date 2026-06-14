@@ -6,7 +6,7 @@ import sys
 import time
 import requests
 
-# Fix Windows GBK encoding
+# 修复 Windows GBK 控制台编码问题
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
@@ -74,37 +74,37 @@ try:
             
             if tenant_count == 0:
                 print("    数据库中无租户数据，开始播种...")
-                # Seed tenant
+                # 写入种子租户
                 cursor.execute(
                     "INSERT INTO kb_system.tenant (id, name, code, status) VALUES (1, '默认租户', 'wenqu-default', 1)")
                 cursor.execute(
                     "INSERT INTO kb_system.tenant (id, name, code, status) VALUES (2, '演示租户', 'demo', 1)")
                 conn.commit()
                 
-                # Need to insert user OUTSIDE tenant context or with specific tenant_id
+                # 需要在租户上下文外插入用户，或显式指定 tenant_id
                 import hashlib
-                # bcrypt hash of 'Admin@123'
-                # Simple hash: use passlib or bcrypt if available
+                # 'Admin@123' 的 bcrypt 哈希
+                # 简单哈希：优先使用可用的 passlib 或 bcrypt
                 try:
                     import bcrypt
                     pwd_hash = bcrypt.hashpw(b'Admin@123', bcrypt.gensalt()).decode()
                 except:
-                    # Fallback - use a pre-computed hash
+                # 兜底方案：使用预先计算好的哈希
                     pwd_hash = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
                 
-                # SUPER_ADMIN in tenant 1
+                # 租户 1 的 SUPER_ADMIN
                 cursor.execute(
                     "INSERT INTO kb_system.user (id, tenant_id, username, password_hash, role, status) "
                     "VALUES (1, 1, 'superadmin', %s, 0, 1)", (pwd_hash,))
-                # TENANT_ADMIN in tenant 1
+                # 租户 1 的 TENANT_ADMIN
                 cursor.execute(
                     "INSERT INTO kb_system.user (id, tenant_id, username, password_hash, role, status) "
                     "VALUES (2, 1, 'admin', %s, 1, 1)", (pwd_hash,))
-                # USER in tenant 1
+                # 租户 1 的 USER
                 cursor.execute(
                     "INSERT INTO kb_system.user (id, tenant_id, username, password_hash, role, status) "
                     "VALUES (3, 1, 'user1', %s, 2, 1)", (pwd_hash,))
-                # USER in tenant 2
+                # 租户 2 的 USER
                 cursor.execute(
                     "INSERT INTO kb_system.user (id, tenant_id, username, password_hash, role, status) "
                     "VALUES (4, 2, 'user2', %s, 2, 1)", (pwd_hash,))
@@ -169,7 +169,7 @@ if not SUPER_ADMIN_TOKEN:
             USER_TOKEN = token
             break
         elif data.get("code") == 1003:
-            # Username already exists, try login
+                # 用户名已存在，尝试直接登录
             r = requests.post(f"{BASE}/api/auth/login", json={
                 "tenantCode": tenant, "username": f"tester-{ts}", "password": "Test@1234"
             }, headers=HEADERS, timeout=5)
@@ -509,7 +509,7 @@ for mod in modules_order:
             report += f"| {i} | {mod} | {r['name']} | {emoji} | {r['detail']} |\n"
             i += 1
 
-# Add remaining unmatched items
+# 补充尚未匹配的剩余项目
 for r in results:
     matched = False
     for mod in modules_order:
@@ -522,7 +522,7 @@ for r in results:
         report += f"| {i} | 其他 | {r['name']} | {emoji} | {r['detail']} |\n"
         i += 1
 
-# Module stats
+# 模块统计
 report += """
 
 ---

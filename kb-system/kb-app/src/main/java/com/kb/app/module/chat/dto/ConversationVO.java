@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * <p>
  * 仅返回前端会话列表需要展示和排序的字段，隐藏 user_id、tenant_id 等内部字段。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

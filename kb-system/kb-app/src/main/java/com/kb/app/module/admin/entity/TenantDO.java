@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * 注意：tenant 表本身不受租户拦截器影响（它是租户的元数据表），
  * 需要在拦截器配置中将此表排除。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

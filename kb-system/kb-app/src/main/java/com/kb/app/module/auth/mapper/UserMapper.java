@@ -25,7 +25,7 @@ import java.util.List;
  *     <li>管理员：查询/修改本租户用户列表和角色</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface UserMapper extends BaseMapper<UserDO> {

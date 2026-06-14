@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Configuration;
  * 后续按 Step 顺序还会在此配置类中添加其他拦截器，
  * 如乐观锁拦截器（如需要）。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Configuration
 public class MybatisPlusConfig {

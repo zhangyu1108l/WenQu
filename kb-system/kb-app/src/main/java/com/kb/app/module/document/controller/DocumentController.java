@@ -36,7 +36,7 @@ import java.util.Map;
  * 由 Gateway 的 JwtAuthFilter 解析 JWT 后写入请求头 X-Tenant-Id 和 X-User-Id，
  * Controller 通过 @RequestHeader 注解直接读取，无需再次解析 JWT。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @RestController
 @RequestMapping("/api/docs")

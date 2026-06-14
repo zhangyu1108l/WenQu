@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * 所有方法均委托给 {@link MinioClient} 执行，异常统一捕获并记录日志后抛出 RuntimeException，
  * 避免业务层处理底层 MinIO 异常细节。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

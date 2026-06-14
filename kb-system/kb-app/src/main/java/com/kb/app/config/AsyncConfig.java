@@ -26,7 +26,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * <b>拒绝策略：</b>CallerRunsPolicy — 当线程池和队列都满时，
  * 由调用方线程直接执行任务，避免任务被丢弃。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Configuration

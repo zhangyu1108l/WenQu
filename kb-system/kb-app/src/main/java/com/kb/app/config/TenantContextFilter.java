@@ -31,7 +31,7 @@ import java.io.IOException;
  * <p>
  * <b>必须在 finally 块中清理 ThreadLocal</b>，防止线程池复用导致跨租户数据泄露。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
  * Python 侧使用 snake_case 命名，Java 侧使用 camelCase，
  * 通过 {@link JsonProperty} 注解完成自动映射。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

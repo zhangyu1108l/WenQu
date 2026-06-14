@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * 使用 {@link StringRedisTemplate}（Key 和 Value 都是 String 序列化），
  * 适合存储 JWT token、JSON 字符串等文本数据。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

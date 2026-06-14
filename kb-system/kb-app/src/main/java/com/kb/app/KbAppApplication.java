@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * 职责：用户认证、文档管理、对话问答、系统管理、评估模块、异步任务、RAG 引擎。
  * 运行端口：8081（Docker 内部），由 Gateway（8080）路由转发。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @SpringBootApplication(scanBasePackages = {"com.kb.app", "com.kb.common"})
 @EnableConfigurationProperties({JwtProperties.class, MinioProperties.class})

@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  *     <li>每个文档同时只有一个激活版本（is_active=1），新版本上传后自动切换激活</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service

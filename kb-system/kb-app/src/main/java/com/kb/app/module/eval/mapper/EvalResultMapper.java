@@ -20,7 +20,7 @@ import org.apache.ibatis.annotations.Mapper;
  *     <li>指标聚合：计算四个指标的均值，回写到 eval_batch 表</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface EvalResultMapper extends BaseMapper<EvalResultDO> {

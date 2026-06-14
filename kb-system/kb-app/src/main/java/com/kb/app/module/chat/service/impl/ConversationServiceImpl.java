@@ -23,7 +23,7 @@ import java.util.List;
  * conversation 表包含 tenant_id，查询会由 MyBatis-Plus 租户拦截器自动追加租户条件；
  * message 表不包含 tenant_id，因此删除消息前必须先校验 conversation 的 user_id 归属。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service

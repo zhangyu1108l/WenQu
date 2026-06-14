@@ -26,7 +26,7 @@ import java.util.List;
  *     <li>删除会话：级联删除该会话下的所有消息</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface MessageMapper extends BaseMapper<MessageDO> {

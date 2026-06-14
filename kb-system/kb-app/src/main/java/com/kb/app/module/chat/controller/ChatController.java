@@ -39,7 +39,7 @@ import java.util.List;
  * Gateway 完成 JWT 校验后会注入 X-User-Id / X-Tenant-Id，请求进入 kb-app 后直接从请求头读取，
  * 不在 Controller 中重复解析 JWT。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @RestController
 @RequestMapping("/api/chat")

@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *   port: ${MILVUS_PORT:19530}
  * </pre>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @ConfigurationProperties(prefix = "milvus")

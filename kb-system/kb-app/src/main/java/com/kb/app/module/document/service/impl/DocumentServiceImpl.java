@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  *     <li>删除顺序不可颠倒：先删外部存储（Milvus/MinIO），再删数据库记录</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Service

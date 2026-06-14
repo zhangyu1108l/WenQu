@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
  * <p>
  * eval_batch 表包含 tenant_id 字段，所有查询会被租户拦截器自动追加租户隔离条件。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

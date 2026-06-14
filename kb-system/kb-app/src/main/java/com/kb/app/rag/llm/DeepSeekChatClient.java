@@ -23,7 +23,7 @@ import java.util.function.Consumer;
  * 业务代码不直接依赖 Spring AI 底层调用细节，是为了把模型供应商、框架 API 和 RAG 业务逻辑隔离开；
  * 后续如果切换其他 LLM，只需要调整这一层封装，RAG 链路和上层接口无需感知底层差异。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

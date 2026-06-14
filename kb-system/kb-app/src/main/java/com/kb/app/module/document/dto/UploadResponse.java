@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
  *     <li>轮询到 status=FAILED 后停止轮询，展示错误信息</li>
  * </ol>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

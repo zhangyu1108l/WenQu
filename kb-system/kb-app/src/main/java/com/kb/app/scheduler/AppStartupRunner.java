@@ -22,7 +22,7 @@ import java.sql.Connection;
  * ApplicationRunner 的执行时机是在 Spring 容器全部初始化完成后，比 @PostConstruct 更晚；
  * 此时所有 Bean 和数据库连接都已就绪，适合执行启动恢复和轻量连通性检查。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Slf4j
 @Component

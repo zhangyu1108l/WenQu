@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>
  * 后续如需配置高级参数（如连接超时、区域设置），可在此类中扩展 MinioClient.builder() 的调用链。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Configuration
 public class MinioConfig {

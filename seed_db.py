@@ -25,14 +25,14 @@ for pwd in passwords:
             cur.close(); conn.close()
             sys.exit(0)
         
-        # Seed tenants
+# 写入种子租户
         cur.execute("INSERT INTO tenant (id, name, code, status) VALUES (1, '默认租户', 'wenqu-default', 1)")
         cur.execute("INSERT INTO tenant (id, name, code, status) VALUES (2, '演示租户', 'demo', 1)")
         
-        # Hash password
+# 计算密码哈希
         pwd_hashed = bcrypt.hashpw(b'Admin@123', bcrypt.gensalt()).decode()
         
-        # Seed users - role 0=SUPER_ADMIN, 1=TENANT_ADMIN, 2=USER
+# 写入种子用户：role 0=SUPER_ADMIN，1=TENANT_ADMIN，2=USER
         cur.execute("INSERT INTO user (id, tenant_id, username, password_hash, role, status) VALUES (1, 1, 'superadmin', %s, 0, 1)", (pwd_hashed,))
         cur.execute("INSERT INTO user (id, tenant_id, username, password_hash, role, status) VALUES (2, 1, 'admin', %s, 1, 1)", (pwd_hashed,))
         cur.execute("INSERT INTO user (id, tenant_id, username, password_hash, role, status) VALUES (3, 1, 'user1', %s, 2, 1)", (pwd_hashed,))

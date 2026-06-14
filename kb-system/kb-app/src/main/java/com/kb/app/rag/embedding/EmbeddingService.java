@@ -12,7 +12,7 @@ import java.util.List;
  * <p>
  * 负责将解析后的 chunk 批量向量化，并同步写入 Milvus 与 MySQL doc_chunk。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface EmbeddingService {
 

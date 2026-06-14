@@ -9,7 +9,7 @@ import lombok.Data;
  * 登录时用户需提供租户标识、用户名和密码。
  * 系统先根据 tenantCode 查找租户，再在该租户内校验用户名和密码。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 public class LoginRequest {

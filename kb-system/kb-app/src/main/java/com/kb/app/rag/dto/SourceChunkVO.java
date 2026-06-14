@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 /**
  * 来源引用展示 VO，作为 SSE event:done 的 data 推送给前端。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

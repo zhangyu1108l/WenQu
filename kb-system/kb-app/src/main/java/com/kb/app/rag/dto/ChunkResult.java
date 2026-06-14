@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
  * score 表示 Milvus IP 内积相似度得分。文档向量和查询向量都做 L2 归一化后，
  * IP 内积等价于余弦相似度；本 DTO 中约定分值范围为 0~1，越高表示越相关。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

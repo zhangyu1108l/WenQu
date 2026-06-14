@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 包含文档基础信息及当前激活版本信息（嵌套 {@link VersionVO}）。
  * 隐藏 tenant_id、uploader_id 等内部字段，只暴露前端需要的数据。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

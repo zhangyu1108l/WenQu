@@ -25,7 +25,7 @@ import java.util.List;
  *     <li>下载：查询激活版本的 minio_bucket + minio_key 生成预签名 URL</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface DocumentVersionMapper extends BaseMapper<DocumentVersionDO> {

@@ -20,7 +20,7 @@ import org.apache.ibatis.annotations.Mapper;
  *     <li>删除对话：删除会话及关联的 message 记录</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Mapper
 public interface ConversationMapper extends BaseMapper<ConversationDO> {

@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 智谱 Embedding 配置属性。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @ConfigurationProperties(prefix = "zhipu.embedding")

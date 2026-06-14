@@ -22,7 +22,7 @@ import java.util.List;
  * <p>
  * 注意：文档上传由 {@link DocUploadService} 负责，本接口不包含上传逻辑。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface DocumentService {
 

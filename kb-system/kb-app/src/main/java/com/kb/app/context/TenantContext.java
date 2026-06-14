@@ -27,7 +27,7 @@ package com.kb.app.context;
  *     <li>请求结束后在 Filter 的 finally 块中调用 {@link #clear()} 清理</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public class TenantContext {
 

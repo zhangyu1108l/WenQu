@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * <p>
  * 该类只读取业务侧对话参数，底层 HTTP 接入仍复用 Spring AI 的 OpenAI 兼容配置。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Getter
 @Setter

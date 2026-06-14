@@ -9,7 +9,7 @@ import java.util.List;
  * <p>
  * 负责会话的新建、列表查询、删除和标题更新；消息写入与 SSE 问答链路由后续 Service 负责。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface ConversationService {
 

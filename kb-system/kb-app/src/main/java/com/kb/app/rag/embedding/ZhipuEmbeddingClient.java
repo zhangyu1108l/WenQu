@@ -18,7 +18,7 @@ import java.util.List;
  * 业务代码不直接使用 Spring AI，是为了把模型供应商和框架 API 隔离在这一层；
  * 后续如果切换 Embedding 模型，只需要调整本类或配置，业务代码不需要修改。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Component
 public class ZhipuEmbeddingClient {

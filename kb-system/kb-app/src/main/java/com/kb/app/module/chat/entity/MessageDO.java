@@ -29,7 +29,7 @@ import java.time.LocalDateTime;
  * 注意：message 表不包含 tenant_id 字段，
  * 需要在租户拦截器中将此表加入忽略列表。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

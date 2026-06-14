@@ -14,7 +14,7 @@ import java.util.List;
  *     <li>版本查询：列表查询、激活版本查询</li>
  * </ul>
  *
- * @author kb-system
+ * @author 问渠系统
  */
 public interface DocumentVersionService {
 

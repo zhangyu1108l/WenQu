@@ -8,16 +8,17 @@ WORKDIR /app
 # tesseract-ocr-chi-sim 是必需依赖；缺少简体中文语言包时，中文 OCR 会失败。
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        curl \
         tesseract-ocr \
         tesseract-ocr-chi-sim \
         tesseract-ocr-eng \
-        libgl1-mesa-glx \
+        libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
 # 安装 FastAPI 解析服务所需的 Python 依赖。
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --timeout 300 --retries 10 --no-cache-dir -r requirements.txt
 
 COPY . .
 

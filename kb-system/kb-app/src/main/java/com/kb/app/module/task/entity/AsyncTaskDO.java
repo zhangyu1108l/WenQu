@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
  * 设计上将两类慢任务收敛到同一张表，避免为每条业务链路重复建设进度表；
  * 业务方通过 task_type + biz_id 定位任务，前端通过 taskId 轮询 status、progress、errorMsg。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Data
 @Builder

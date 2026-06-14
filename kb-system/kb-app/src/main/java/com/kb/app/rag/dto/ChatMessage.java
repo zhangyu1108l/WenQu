@@ -12,7 +12,7 @@ import lombok.Setter;
  * 该类不同于 MySQL 的 message 表：这里只保留 role、content、createdAt 三个轻量字段，
  * 不包含 source_chunks 等用于来源引用展示的重字段，避免 Redis 滑动窗口过大。
  *
- * @author kb-system
+ * @author 问渠系统
  */
 @Getter
 @Setter
